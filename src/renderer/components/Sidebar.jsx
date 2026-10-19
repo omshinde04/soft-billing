@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  Smartphone,
   Receipt,
   PlusCircle,
   Package,
@@ -13,6 +14,7 @@ import {
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'orders', label: 'Mobile Orders', icon: Smartphone, hasBadge: true },
   { id: 'new-invoice', label: 'Create Invoice', icon: PlusCircle, highlight: true },
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'products', label: 'Products Master', icon: Package },
@@ -22,7 +24,7 @@ const navItems = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-export default function Sidebar({ activePage, setActivePage, businessSettings }) {
+export default function Sidebar({ activePage, setActivePage, businessSettings, pendingOrdersCount = 0 }) {
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col flex-shrink-0 h-full border-r border-slate-800 select-none">
       {/* Brand Header */}
@@ -72,7 +74,12 @@ export default function Sidebar({ activePage, setActivePage, businessSettings })
               }`}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
-              <span>{item.label}</span>
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.hasBadge && pendingOrdersCount > 0 && (
+                <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 shadow-sm">
+                  {pendingOrdersCount}
+                </span>
+              )}
             </button>
           );
         })}

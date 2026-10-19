@@ -31,6 +31,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSalesReturnById: (id) => ipcRenderer.invoke('returns:getById', id),
   createSalesReturn: (returnData) => ipcRenderer.invoke('returns:create', returnData),
 
+  // Mobile Field Orders (Android Salesman App)
+  getOrders: (filter) => ipcRenderer.invoke('orders:list', filter),
+  getOrderById: (id) => ipcRenderer.invoke('orders:getById', id),
+  createOrder: (orderData) => ipcRenderer.invoke('orders:create', orderData),
+  convertOrderToInvoice: (orderId) => ipcRenderer.invoke('orders:convert', orderId),
+
   // Dashboard & Reports
   getDashboardMetrics: (filter) => ipcRenderer.invoke('dashboard:getMetrics', filter),
   getInvoiceWiseReport: (filter) => ipcRenderer.invoke('reports:getInvoiceWise', filter),

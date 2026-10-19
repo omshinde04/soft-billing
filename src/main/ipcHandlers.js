@@ -21,7 +21,11 @@ import {
   createSalesReturn,
   getSalesReturns,
   getSalesReturnById,
-  getDashboardMetrics
+  getDashboardMetrics,
+  getOrders,
+  getOrderById,
+  createOrder,
+  convertOrderToInvoice
 } from '../database/queries.js';
 import {
   getInvoiceWiseReport,
@@ -150,6 +154,25 @@ export function registerIpcHandlers(mainWindow) {
       throw new Error('Invalid return data');
     }
     return createSalesReturn(returnData);
+  });
+
+  // ==========================================
+  // Mobile Field Orders (Android App Integration)
+  // ==========================================
+  ipcMain.handle('orders:list', async (_event, filter = {}) => {
+    return getOrders(filter);
+  });
+
+  ipcMain.handle('orders:getById', async (_event, id) => {
+    return getOrderById(id);
+  });
+
+  ipcMain.handle('orders:create', async (_event, orderData) => {
+    return createOrder(orderData);
+  });
+
+  ipcMain.handle('orders:convert', async (_event, orderId) => {
+    return convertOrderToInvoice(orderId);
   });
 
   // ==========================================

@@ -3,6 +3,7 @@ import {
   createProduct,
   createRetailer,
   createInvoice,
+  createOrder,
   getProducts,
   getRetailers
 } from '../database/queries.js';
@@ -169,10 +170,107 @@ export function seedDemoData() {
       }
     }
 
+    // 4. Seed Mobile Orders if empty
+    let existingOrdersCount = 0;
+    try {
+      existingOrdersCount = db.prepare('SELECT COUNT(*) as count FROM orders').get().count;
+    } catch (e) {
+      existingOrdersCount = 0;
+    }
+
+    if (existingOrdersCount === 0 && retailerList.length >= 3 && productMap.size >= 4) {
+      const allProds = Array.from(productMap.values());
+
+      // Order 1: From Rahul Shinde on Nandgaon Beat
+      createOrder({
+        order_number: 'ORD-2026-001',
+        order_date: new Date().toISOString().split('T')[0],
+        salesman_name: 'Rahul Shinde (Field Salesman)',
+        salesman_phone: '9822998811',
+        beat_name: 'Nandgaon Market Beat',
+        retailer_id: retailerList[0].id,
+        retailer_name: retailerList[0].shop_name,
+        retailer_phone: retailerList[0].phone,
+        retailer_address: retailerList[0].address,
+        retailer_gstin: retailerList[0].gstin || '',
+        status: 'pending',
+        notes: 'Urgent morning delivery requested. Cash on delivery.',
+        items: [
+          { product_id: allProds[0].id, item_name: allProds[0].name, hsn_code: allProds[0].hsn_code, unit: allProds[0].unit, quantity: 144, mrp: allProds[0].mrp, rate: allProds[0].selling_rate, tax_rate: allProds[0].tax_rate },
+          { product_id: allProds[2].id, item_name: allProds[2].name, hsn_code: allProds[2].hsn_code, unit: allProds[2].unit, quantity: 96, mrp: allProds[2].mrp, rate: allProds[2].selling_rate, tax_rate: allProds[2].tax_rate },
+          { product_id: allProds[3].id, item_name: allProds[3].name, hsn_code: allProds[3].hsn_code, unit: allProds[3].unit, quantity: 72, mrp: allProds[3].mrp, rate: allProds[3].selling_rate, tax_rate: allProds[3].tax_rate },
+          { product_id: allProds[8].id, item_name: allProds[8].name, hsn_code: allProds[8].hsn_code, unit: allProds[8].unit, quantity: 24, mrp: allProds[8].mrp, rate: allProds[8].selling_rate, tax_rate: allProds[8].tax_rate }
+        ]
+      });
+
+      // Order 2: From Sanjay Patil on Station Road Beat
+      createOrder({
+        order_number: 'ORD-2026-002',
+        order_date: new Date().toISOString().split('T')[0],
+        salesman_name: 'Sanjay Patil (Order Booker)',
+        salesman_phone: '9822776655',
+        beat_name: 'Station Road & College Corner',
+        retailer_id: retailerList[1].id,
+        retailer_name: retailerList[1].shop_name,
+        retailer_phone: retailerList[1].phone,
+        retailer_address: retailerList[1].address,
+        retailer_gstin: retailerList[1].gstin || '',
+        status: 'pending',
+        notes: 'Stock running low. Send tempo before 2 PM.',
+        items: [
+          { product_id: allProds[1].id, item_name: allProds[1].name, hsn_code: allProds[1].hsn_code, unit: allProds[1].unit, quantity: 144, mrp: allProds[1].mrp, rate: allProds[1].selling_rate, tax_rate: allProds[1].tax_rate },
+          { product_id: allProds[4].id, item_name: allProds[4].name, hsn_code: allProds[4].hsn_code, unit: allProds[4].unit, quantity: 72, mrp: allProds[4].mrp, rate: allProds[4].selling_rate, tax_rate: allProds[4].tax_rate },
+          { product_id: allProds[5].id, item_name: allProds[5].name, hsn_code: allProds[5].hsn_code, unit: allProds[5].unit, quantity: 72, mrp: allProds[5].mrp, rate: allProds[5].selling_rate, tax_rate: allProds[5].tax_rate }
+        ]
+      });
+
+      // Order 3: B2B Order from Kisan Super Market
+      createOrder({
+        order_number: 'ORD-2026-003',
+        order_date: new Date().toISOString().split('T')[0],
+        salesman_name: 'Rahul Shinde (Field Salesman)',
+        salesman_phone: '9822998811',
+        beat_name: 'Old Agra Road B2B',
+        retailer_id: retailerList[2].id,
+        retailer_name: retailerList[2].shop_name,
+        retailer_phone: retailerList[2].phone,
+        retailer_address: retailerList[2].address,
+        retailer_gstin: retailerList[2].gstin || '',
+        status: 'pending',
+        notes: 'B2B GST bill needed for input credit. Store manager approved payment on delivery.',
+        items: [
+          { product_id: allProds[0].id, item_name: allProds[0].name, hsn_code: allProds[0].hsn_code, unit: allProds[0].unit, quantity: 288, mrp: allProds[0].mrp, rate: allProds[0].selling_rate, tax_rate: allProds[0].tax_rate },
+          { product_id: allProds[6].id, item_name: allProds[6].name, hsn_code: allProds[6].hsn_code, unit: allProds[6].unit, quantity: 144, mrp: allProds[6].mrp, rate: allProds[6].selling_rate, tax_rate: allProds[6].tax_rate },
+          { product_id: allProds[7].id, item_name: allProds[7].name, hsn_code: allProds[7].hsn_code, unit: allProds[7].unit, quantity: 24, mrp: allProds[7].mrp, rate: allProds[7].selling_rate, tax_rate: allProds[7].tax_rate },
+          { product_id: allProds[9].id, item_name: allProds[9].name, hsn_code: allProds[9].hsn_code, unit: allProds[9].unit, quantity: 96, mrp: allProds[9].mrp, rate: allProds[9].selling_rate, tax_rate: allProds[9].tax_rate }
+        ]
+      });
+
+      // Order 4: Already converted sample order
+      createOrder({
+        order_number: 'ORD-2026-000',
+        order_date: '2026-10-15',
+        salesman_name: 'Amit Deshmukh (Beat Salesman)',
+        salesman_phone: '9822668844',
+        beat_name: 'Bus Stand Chowk',
+        retailer_id: retailerList[3].id,
+        retailer_name: retailerList[3].shop_name,
+        retailer_phone: retailerList[3].phone,
+        retailer_address: retailerList[3].address,
+        retailer_gstin: retailerList[3].gstin || '',
+        status: 'converted',
+        notes: 'Converted to official tax invoice INV-1004.',
+        items: [
+          { product_id: allProds[0].id, item_name: allProds[0].name, hsn_code: allProds[0].hsn_code, unit: allProds[0].unit, quantity: 72, mrp: allProds[0].mrp, rate: allProds[0].selling_rate, tax_rate: allProds[0].tax_rate }
+        ]
+      });
+    }
+
     return {
       productsCount: getProducts().length,
       retailersCount: getRetailers().length,
-      invoicesCount: db.prepare('SELECT COUNT(*) as count FROM invoices').get().count
+      invoicesCount: db.prepare('SELECT COUNT(*) as count FROM invoices').get().count,
+      ordersCount: db.prepare('SELECT COUNT(*) as count FROM orders').get().count
     };
   });
 

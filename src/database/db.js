@@ -93,6 +93,18 @@ function runMigrations(db) {
     // Column might already exist or table not yet created
   }
 
+  // Ensure orders table exists for existing databases
+  try {
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'").get();
+    if (!tableExists) {
+      const schemaPath = path.join(__dirname, 'schema.sql');
+      const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+      db.exec(schemaSql);
+    }
+  } catch (e) {
+    // Orders table might already exist
+  }
+
   // Record migration version 1
   const existingVersion = db.prepare('SELECT version FROM schema_migrations WHERE version = 1').get();
   if (!existingVersion) {

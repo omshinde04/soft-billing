@@ -163,3 +163,52 @@ CREATE TABLE IF NOT EXISTS sales_return_items (
 
 CREATE INDEX IF NOT EXISTS idx_sales_return_items_return ON sales_return_items(sales_return_id);
 CREATE INDEX IF NOT EXISTS idx_sales_return_items_inv_item ON sales_return_items(invoice_item_id);
+
+-- 9. Mobile Field Orders Table (Incoming Orders from Salesman Android App)
+CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_number TEXT NOT NULL UNIQUE,
+  order_date TEXT NOT NULL,
+  salesman_name TEXT NOT NULL,
+  salesman_phone TEXT DEFAULT '',
+  beat_name TEXT DEFAULT '',
+  retailer_id INTEGER REFERENCES retailers(id),
+  retailer_name TEXT NOT NULL,
+  retailer_phone TEXT DEFAULT '',
+  retailer_address TEXT DEFAULT '',
+  retailer_gstin TEXT DEFAULT '',
+  subtotal_taxable REAL NOT NULL DEFAULT 0.0,
+  total_tax REAL NOT NULL DEFAULT 0.0,
+  grand_total REAL NOT NULL DEFAULT 0.0,
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'converted', 'cancelled'
+  converted_invoice_id INTEGER REFERENCES invoices(id),
+  converted_invoice_number TEXT DEFAULT '',
+  notes TEXT DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number);
+CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(order_date);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_salesman ON orders(salesman_name);
+
+-- 10. Mobile Order Line Items Table
+CREATE TABLE IF NOT EXISTS order_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  product_id INTEGER REFERENCES products(id),
+  item_name TEXT NOT NULL,
+  hsn_code TEXT DEFAULT '',
+  unit TEXT NOT NULL DEFAULT 'PCS',
+  quantity REAL NOT NULL DEFAULT 1,
+  mrp REAL NOT NULL DEFAULT 0.0,
+  rate REAL NOT NULL DEFAULT 0.0,
+  tax_rate REAL NOT NULL DEFAULT 5.0,
+  taxable_amount REAL NOT NULL DEFAULT 0.0,
+  tax_amount REAL NOT NULL DEFAULT 0.0,
+  total_amount REAL NOT NULL DEFAULT 0.0
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
+

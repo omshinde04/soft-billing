@@ -1,5 +1,5 @@
 import { getDb } from './db.js';
-import { roundTo } from '../shared/calculations.js';
+import { roundTo, calculateInvoiceTotals } from '../shared/calculations.js';
 
 // ==========================================
 // 1. BUSINESS SETTINGS
@@ -768,6 +768,23 @@ export function getDashboardMetrics({ fromDate = '', toDate = '' } = {}) {
   const netTaxable = roundTo(invoiceStats.total_taxable - returnStats.return_taxable, 2);
   const totalTax = roundTo(invoiceStats.total_cgst + invoiceStats.total_sgst + invoiceStats.total_igst, 2);
 
+  // Pending mobile field orders stats
+  let pendingOrdersCount = 0;
+  let pendingOrdersAmount = 0;
+  try {
+    const pOrder = db.prepare(`
+      SELECT COUNT(*) as count, COALESCE(SUM(grand_total), 0) as amount
+      FROM orders
+      WHERE status = 'pending'
+    `).get();
+    if (pOrder) {
+      pendingOrdersCount = pOrder.count;
+      pendingOrdersAmount = roundTo(pOrder.amount, 2);
+    }
+  } catch (e) {
+    // Orders table might not exist in early tests
+  }
+
   return {
     totalInvoices: invoiceStats.total_invoices,
     grossSales: roundTo(invoiceStats.total_sales, 2),
@@ -781,7 +798,214 @@ export function getDashboardMetrics({ fromDate = '', toDate = '' } = {}) {
     totalTax: totalTax,
     activeProducts: productCount,
     activeRetailers: retailerCount,
+    pendingOrdersCount,
+    pendingOrdersAmount,
     recentInvoices: recentInvoices,
     recentReturns: recentReturns
   };
+}
+
+// ==========================================
+// 6. MOBILE FIELD ORDERS (Android App Integration)
+// ==========================================
+
+export function getOrders({ status = '', search = '', limit = 100 } = {}) {
+  const db = getDb();
+  let whereClauses = [];
+  let params = [];
+
+  if (status && status !== 'all') {
+    whereClauses.push('o.status = ?');
+    params.push(status);
+  }
+
+  if (search && search.trim()) {
+    const term = `%${search.trim()}%`;
+    whereClauses.push('(o.order_number LIKE ? OR o.retailer_name LIKE ? OR o.salesman_name LIKE ? OR o.beat_name LIKE ?)');
+    params.push(term, term, term, term);
+  }
+
+  const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+  const orders = db.prepare(`
+    SELECT o.*,
+      COUNT(oi.id) as item_count,
+      COALESCE(SUM(oi.quantity), 0) as total_quantity
+    FROM orders o
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    ${whereStr}
+    GROUP BY o.id
+    ORDER BY o.id DESC
+    LIMIT ?
+  `).all(...params, limit);
+
+  return orders;
+}
+
+export function getOrderById(orderId) {
+  const db = getDb();
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+  if (!order) return null;
+
+  const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderId);
+  return { ...order, items };
+}
+
+export function createOrder(orderData) {
+  const db = getDb();
+
+  return db.transaction(() => {
+    const orderNumber = orderData.order_number || `ORD-2026-${Date.now().toString().slice(-4)}`;
+    const orderDate = orderData.order_date || new Date().toISOString().split('T')[0];
+
+    let subtotalTaxable = 0;
+    let totalTax = 0;
+    let grandTotal = 0;
+
+    const itemsToInsert = [];
+    for (const it of orderData.items || []) {
+      const qty = Number(it.quantity) || 1;
+      const rate = Number(it.rate) || 0;
+      const taxRate = Number(it.tax_rate) || 5;
+      const taxable = roundTo(qty * rate, 2);
+      const tax = roundTo(taxable * (taxRate / 100), 2);
+      const total = roundTo(taxable + tax, 2);
+
+      subtotalTaxable = roundTo(subtotalTaxable + taxable, 2);
+      totalTax = roundTo(totalTax + tax, 2);
+      grandTotal = roundTo(grandTotal + total, 2);
+
+      itemsToInsert.push({
+        product_id: it.product_id || null,
+        item_name: it.item_name,
+        hsn_code: it.hsn_code || '',
+        unit: it.unit || 'PCS',
+        quantity: qty,
+        mrp: Number(it.mrp) || 0,
+        rate: rate,
+        tax_rate: taxRate,
+        taxable_amount: taxable,
+        tax_amount: tax,
+        total_amount: total
+      });
+    }
+
+    const insertOrderStmt = db.prepare(`
+      INSERT INTO orders (
+        order_number, order_date, salesman_name, salesman_phone, beat_name,
+        retailer_id, retailer_name, retailer_phone, retailer_address, retailer_gstin,
+        subtotal_taxable, total_tax, grand_total, status, notes
+      ) VALUES (
+        @order_number, @order_date, @salesman_name, @salesman_phone, @beat_name,
+        @retailer_id, @retailer_name, @retailer_phone, @retailer_address, @retailer_gstin,
+        @subtotal_taxable, @total_tax, @grand_total, @status, @notes
+      )
+    `);
+
+    const result = insertOrderStmt.run({
+      order_number: orderNumber,
+      order_date: orderDate,
+      salesman_name: orderData.salesman_name || 'Field Salesman',
+      salesman_phone: orderData.salesman_phone || '',
+      beat_name: orderData.beat_name || 'General Beat',
+      retailer_id: orderData.retailer_id || null,
+      retailer_name: orderData.retailer_name || 'Retailer',
+      retailer_phone: orderData.retailer_phone || '',
+      retailer_address: orderData.retailer_address || '',
+      retailer_gstin: orderData.retailer_gstin || '',
+      subtotal_taxable: subtotalTaxable,
+      total_tax: totalTax,
+      grand_total: grandTotal,
+      status: orderData.status || 'pending',
+      notes: orderData.notes || ''
+    });
+
+    const orderId = result.lastInsertRowid;
+
+    const insertItemStmt = db.prepare(`
+      INSERT INTO order_items (
+        order_id, product_id, item_name, hsn_code, unit,
+        quantity, mrp, rate, tax_rate, taxable_amount, tax_amount, total_amount
+      ) VALUES (
+        @order_id, @product_id, @item_name, @hsn_code, @unit,
+        @quantity, @mrp, @rate, @tax_rate, @taxable_amount, @tax_amount, @total_amount
+      )
+    `);
+
+    for (const it of itemsToInsert) {
+      insertItemStmt.run({ order_id: orderId, ...it });
+    }
+
+    return getOrderById(orderId);
+  })();
+}
+
+export function convertOrderToInvoice(orderId) {
+  const db = getDb();
+  const order = getOrderById(orderId);
+  if (!order) throw new Error('Order not found');
+  if (order.status === 'converted') {
+    throw new Error(`Order ${order.order_number} has already been converted to invoice ${order.converted_invoice_number}`);
+  }
+
+  return db.transaction(() => {
+    // 1. Calculate invoice financial totals
+    const calcInputItems = order.items.map(it => ({
+      product_id: it.product_id,
+      name: it.item_name,
+      hsn_code: it.hsn_code,
+      unit: it.unit,
+      quantity: it.quantity,
+      mrp: it.mrp,
+      rate: it.rate,
+      tax_rate: it.tax_rate,
+      discount_amount: 0
+    }));
+
+    const calculated = calculateInvoiceTotals(calcInputItems, 'exclusive', false);
+
+    // 2. Construct invoice payload with complete financial breakdown
+    const invoicePayload = {
+      retailer_id: order.retailer_id,
+      invoice_date: new Date().toISOString().split('T')[0],
+      pricing_mode: 'exclusive',
+      subtotal_taxable: calculated.subtotalTaxable,
+      total_cgst: calculated.totalCgst,
+      total_sgst: calculated.totalSgst,
+      total_igst: calculated.totalIgst,
+      round_off: calculated.roundOff,
+      grand_total: calculated.grandTotal,
+      notes: `Generated from Field Mobile Order #${order.order_number} (Salesman: ${order.salesman_name}, Beat: ${order.beat_name}). ${order.notes || ''}`.trim(),
+      items: calculated.items.map(it => ({
+        product_id: it.product_id,
+        item_name: it.name,
+        hsn_code: it.hsn_code,
+        unit: it.unit,
+        quantity: it.quantity,
+        mrp: it.mrp,
+        rate: it.rate,
+        gross_rate: it.grossRate,
+        discount_amount: it.discountAmount,
+        taxable_amount: it.taxableAmount,
+        tax_rate: it.taxRate,
+        cgst_amount: it.cgstAmount,
+        sgst_amount: it.sgstAmount,
+        igst_amount: it.igstAmount,
+        total_amount: it.totalAmount
+      }))
+    };
+
+    const invoice = createInvoice(invoicePayload);
+
+    // 3. Update order status to converted
+    db.prepare(`
+      UPDATE orders
+      SET status = 'converted',
+          converted_invoice_id = ?,
+          converted_invoice_number = ?
+      WHERE id = ?
+    `).run(invoice.id, invoice.invoice_number, orderId);
+
+    return { success: true, invoice, orderId };
+  })();
 }

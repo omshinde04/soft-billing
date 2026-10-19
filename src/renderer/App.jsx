@@ -6,6 +6,7 @@ import InvoicePrintModal from './components/InvoicePrintModal.jsx';
 import CreditNotePrintModal from './components/CreditNotePrintModal.jsx';
 
 import DashboardPage from './pages/DashboardPage.jsx';
+import OrdersPage from './pages/OrdersPage.jsx';
 import InvoicesPage from './pages/InvoicesPage.jsx';
 import NewInvoicePage from './pages/NewInvoicePage.jsx';
 import ProductsPage from './pages/ProductsPage.jsx';
@@ -18,6 +19,7 @@ export default function App() {
   const [activePage, setActivePage] = useState('dashboard');
   const [businessSettings, setBusinessSettings] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
   // Invoice Preview Modal State
   const [previewInvoice, setPreviewInvoice] = useState(null);
@@ -27,20 +29,25 @@ export default function App() {
   const [previewReturn, setPreviewReturn] = useState(null);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
 
-  // Load Settings on initial mount
+  // Load Settings and Pending Orders Count on mount
   useEffect(() => {
     async function loadSettings() {
       try {
         if (window.electronAPI) {
           const s = await window.electronAPI.getSettings();
           setBusinessSettings(s);
+
+          const metrics = await window.electronAPI.getDashboardMetrics();
+          if (metrics && metrics.pendingOrdersCount !== undefined) {
+            setPendingOrdersCount(metrics.pendingOrdersCount);
+          }
         }
       } catch (err) {
         console.error('Failed to load initial settings:', err);
       }
     }
     loadSettings();
-  }, []);
+  }, [activePage]);
 
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
@@ -84,6 +91,7 @@ export default function App() {
 
   const pageTitles = {
     dashboard: 'Dashboard',
+    orders: 'Mobile Field Orders (Android Sync)',
     'new-invoice': 'Create Tax Invoice',
     invoices: 'Invoice Records & History',
     products: 'Products Master',
@@ -100,6 +108,7 @@ export default function App() {
         activePage={activePage}
         setActivePage={setActivePage}
         businessSettings={businessSettings}
+        pendingOrdersCount={pendingOrdersCount}
       />
 
       {/* Main Content Area */}
@@ -116,6 +125,14 @@ export default function App() {
               onNavigate={setActivePage}
               onSelectInvoice={handleOpenInvoicePreview}
               onSelectReturn={handleOpenReturnPreview}
+            />
+          )}
+
+          {activePage === 'orders' && (
+            <OrdersPage
+              onSelectInvoice={handleOpenInvoicePreview}
+              onInvoiceCreated={handleInvoiceCreated}
+              onShowToast={showToast}
             />
           )}
 

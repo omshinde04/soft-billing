@@ -10,7 +10,11 @@ import {
   createInvoice,
   createSalesReturn,
   getSalesReturnById,
-  getDashboardMetrics
+  getDashboardMetrics,
+  createOrder,
+  getOrders,
+  getOrderById,
+  convertOrderToInvoice
 } from '../src/database/queries.js';
 import {
   generateInvoiceWhatsAppText,
@@ -211,4 +215,70 @@ describe('Core Workflow, Returns Dashboard & WhatsApp Integration', () => {
     expect(fullReturn.items).toHaveLength(1);
     expect(fullReturn.items[0].return_qty).toBe(5);
   });
+
+  it('handles mobile field sales orders lifecycle and conversion to tax invoice', () => {
+    // 1. Setup product and retailer
+    const prod = createProduct({
+      name: 'Parle-G Glucose 10 MRP',
+      selling_rate: 8.59,
+      tax_rate: 5,
+      pack_size: 72,
+      unit: 'PCS'
+    });
+
+    const ret = createRetailer({
+      shop_name: 'Avinash Kirana Stores',
+      phone: '9822114400',
+      address: 'Nandgaon Market',
+      city: 'Nandgaon'
+    });
+
+    // 2. Mobile app submits an order
+    const order = createOrder({
+      order_number: 'ORD-TEST-001',
+      order_date: '2026-10-19',
+      salesman_name: 'Rahul Shinde (Field Salesman)',
+      salesman_phone: '9822998811',
+      beat_name: 'Nandgaon Market Beat',
+      retailer_id: ret.id,
+      retailer_name: ret.shop_name,
+      retailer_phone: ret.phone,
+      retailer_address: ret.address,
+      notes: 'Urgent delivery requested by kirana owner',
+      items: [
+        {
+          product_id: prod.id,
+          item_name: prod.name,
+          quantity: 144,
+          rate: prod.selling_rate,
+          tax_rate: prod.tax_rate,
+          mrp: 10
+        }
+      ]
+    });
+
+    expect(order).toBeDefined();
+    expect(order.order_number).toBe('ORD-TEST-001');
+    expect(order.status).toBe('pending');
+    expect(order.salesman_name).toContain('Rahul Shinde');
+    expect(order.grand_total).toBeGreaterThan(0);
+    expect(order.items).toHaveLength(1);
+
+    // 3. Desktop listing retrieves the pending mobile order
+    const pendingOrders = getOrders({ status: 'pending' });
+    expect(pendingOrders.some(o => o.order_number === 'ORD-TEST-001')).toBe(true);
+
+    // 4. Distributor converts mobile order to formal tax invoice
+    const conversionResult = convertOrderToInvoice(order.id);
+    expect(conversionResult.success).toBe(true);
+    expect(conversionResult.invoice).toBeDefined();
+    expect(conversionResult.invoice.invoice_number).toMatch(/^INV-/);
+    expect(conversionResult.invoice.grand_total).toBe(Math.round(order.grand_total));
+
+    // 5. Verify order is now marked converted
+    const updatedOrder = getOrderById(order.id);
+    expect(updatedOrder.status).toBe('converted');
+    expect(updatedOrder.converted_invoice_number).toBe(conversionResult.invoice.invoice_number);
+  });
 });
+
