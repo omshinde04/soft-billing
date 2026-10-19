@@ -65,52 +65,28 @@ export async function generateGSTR1Workbook({ fromDate = '', toDate = '', filePa
   wsMaster.addRow(['   (b)Aggregate Turnover - April to June, 2017:', '']);
   wsMaster.addRow([]);
 
-  // Row 10: Parent Headers
-  wsMaster.addRow([
+  // Row 10: Clean Table Headers (Single-row to eliminate duplicate stacked titles in Apple Numbers/Excel)
+  const headerRow = wsMaster.addRow([
     'GSTIN/UIN No.',
     'Party Name',
     'Transaction Type',
-    'Invoice', '', '',
+    'Invoice No.',
+    'Invoice Date',
+    'Invoice Value',
     'Rate',
     'CESS Rate',
     'Taxable Value',
     'Reverse Charge',
-    'Amount', '', '', '',
-    'Place Of Supply'
-  ]);
-
-  // Row 11: Child Headers
-  wsMaster.addRow([
-    '', '', '',
-    'No.',
-    'Date',
-    'Value',
-    '', '', '', '',
     'Integrated Tax',
     'Central Tax',
     'State/UT Tax',
     'CESS',
-    ''
+    'Place Of Supply'
   ]);
 
-  // Cell merges matching Swipe reference exactly
-  wsMaster.mergeCells('A10:A11');
-  wsMaster.mergeCells('B10:B11');
-  wsMaster.mergeCells('C10:C11');
-  wsMaster.mergeCells('D10:F10');
-  wsMaster.mergeCells('G10:G11');
-  wsMaster.mergeCells('H10:H11');
-  wsMaster.mergeCells('I10:I11');
-  wsMaster.mergeCells('J10:J11');
-  wsMaster.mergeCells('K10:N10');
-  wsMaster.mergeCells('O10:O11');
-
-  // Format header cells
-  const headerCells = ['A10', 'B10', 'C10', 'D10', 'G10', 'H10', 'I10', 'J10', 'K10', 'O10', 'D11', 'E11', 'F11', 'K11', 'L11', 'M11', 'N11'];
-  headerCells.forEach(ref => {
-    const cell = wsMaster.getCell(ref);
-    cell.font = boldFont;
-    cell.alignment = centerAlign;
+  headerRow.font = boldFont;
+  headerRow.alignment = centerAlign;
+  headerRow.eachCell(cell => {
     cell.fill = headerFill;
   });
 
@@ -176,7 +152,8 @@ export async function generateGSTR1Workbook({ fromDate = '', toDate = '', filePa
     totalIgst, totalCgst, totalSgst, 0.0, ''
   ]);
   const totRowNum = totRow.number;
-  wsMaster.mergeCells(`B${totRowNum}:E${totRowNum}`);
+  wsMaster.mergeCells(`A${totRowNum}:E${totRowNum}`);
+  totRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
   totRow.font = { bold: true };
 
   // ==========================================
