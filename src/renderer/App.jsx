@@ -1,0 +1,157 @@
+import React, { useState, useEffect } from 'react';
+import Sidebar from './components/Sidebar.jsx';
+import Header from './components/Header.jsx';
+import NotificationToast from './components/NotificationToast.jsx';
+import InvoicePrintModal from './components/InvoicePrintModal.jsx';
+
+import DashboardPage from './pages/DashboardPage.jsx';
+import InvoicesPage from './pages/InvoicesPage.jsx';
+import NewInvoicePage from './pages/NewInvoicePage.jsx';
+import ProductsPage from './pages/ProductsPage.jsx';
+import RetailersPage from './pages/RetailersPage.jsx';
+import SalesReturnsPage from './pages/SalesReturnsPage.jsx';
+import ReportsPage from './pages/ReportsPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
+
+export default function App() {
+  const [activePage, setActivePage] = useState('dashboard');
+  const [businessSettings, setBusinessSettings] = useState(null);
+  const [notification, setNotification] = useState(null);
+
+  // Invoice Preview Modal State
+  const [previewInvoice, setPreviewInvoice] = useState(null);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // Load Settings on initial mount
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        if (window.electronAPI) {
+          const s = await window.electronAPI.getSettings();
+          setBusinessSettings(s);
+        }
+      } catch (err) {
+        console.error('Failed to load initial settings:', err);
+      }
+    }
+    loadSettings();
+  }, []);
+
+  const showToast = (message, type = 'success') => {
+    setNotification({ message, type });
+  };
+
+  const handleOpenInvoicePreview = async (invoiceId) => {
+    try {
+      if (window.electronAPI) {
+        const inv = await window.electronAPI.getInvoiceById(invoiceId);
+        if (inv) {
+          setPreviewInvoice(inv);
+          setIsPrintModalOpen(true);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load invoice for preview:', err);
+      showToast('Could not load invoice details', 'error');
+    }
+  };
+
+  const handleInvoiceCreated = (invoice) => {
+    setPreviewInvoice(invoice);
+    setIsPrintModalOpen(true);
+    setActivePage('invoices');
+  };
+
+  const pageTitles = {
+    dashboard: 'Dashboard',
+    'new-invoice': 'Create Tax Invoice',
+    invoices: 'Invoice Records & History',
+    products: 'Products Master',
+    retailers: 'Retailers Master',
+    returns: 'Sales Returns',
+    reports: 'Reports & GSTR-1',
+    settings: 'Settings'
+  };
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans">
+      {/* Sidebar Navigation */}
+      <Sidebar
+        activePage={activePage}
+        setActivePage={setActivePage}
+        businessSettings={businessSettings}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <Header
+          pageTitle={pageTitles[activePage] || 'Billing-Soft'}
+          businessSettings={businessSettings}
+          onNewInvoice={activePage !== 'new-invoice' ? () => setActivePage('new-invoice') : null}
+        />
+
+        <main className="flex-1 overflow-hidden flex flex-col">
+          {activePage === 'dashboard' && (
+            <DashboardPage
+              onNavigate={setActivePage}
+              onSelectInvoice={handleOpenInvoicePreview}
+            />
+          )}
+
+          {activePage === 'new-invoice' && (
+            <NewInvoicePage
+              businessSettings={businessSettings}
+              onInvoiceCreated={handleInvoiceCreated}
+              onShowToast={showToast}
+            />
+          )}
+
+          {activePage === 'invoices' && (
+            <InvoicesPage
+              onSelectInvoice={handleOpenInvoicePreview}
+              onNavigate={setActivePage}
+              onShowToast={showToast}
+            />
+          )}
+
+          {activePage === 'products' && (
+            <ProductsPage onShowToast={showToast} />
+          )}
+
+          {activePage === 'retailers' && (
+            <RetailersPage onShowToast={showToast} />
+          )}
+
+          {activePage === 'returns' && (
+            <SalesReturnsPage onShowToast={showToast} />
+          )}
+
+          {activePage === 'reports' && (
+            <ReportsPage onShowToast={showToast} />
+          )}
+
+          {activePage === 'settings' && (
+            <SettingsPage
+              businessSettings={businessSettings}
+              onSettingsUpdated={setBusinessSettings}
+              onShowToast={showToast}
+            />
+          )}
+        </main>
+      </div>
+
+      {/* Printable Invoice Modal */}
+      <InvoicePrintModal
+        isOpen={isPrintModalOpen}
+        invoice={previewInvoice}
+        onClose={() => setIsPrintModalOpen(false)}
+      />
+
+      {/* Floating Notifications */}
+      <NotificationToast
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
+    </div>
+  );
+}
