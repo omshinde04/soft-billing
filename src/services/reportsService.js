@@ -233,7 +233,8 @@ export function getSalesReturnReport({ fromDate = '', toDate = '' } = {}) {
     SELECT
       sr.id, sr.return_number, sr.return_date, sr.reason,
       sr.total_refund_taxable, sr.total_refund_tax, sr.total_refund_amount,
-      i.invoice_number, r.shop_name as retailer_name
+      i.invoice_number, r.shop_name as retailer_name, r.gstin as retailer_gstin,
+      i.place_of_supply
     FROM sales_returns sr
     JOIN invoices i ON sr.invoice_id = i.id
     LEFT JOIN retailers r ON sr.retailer_id = r.id
@@ -252,3 +253,45 @@ export function getSalesReturnReport({ fromDate = '', toDate = '' } = {}) {
 
   return db.prepare(query).all(...params);
 }
+
+export function getProductReturnsReport({ fromDate = '', toDate = '' } = {}) {
+  const db = getDb();
+  let query = `
+    SELECT
+      sri.item_name,
+      sri.product_id,
+      p.hsn_code,
+      p.unit,
+      p.tax_rate,
+      SUM(sri.return_qty) as total_quantity,
+      SUM(sri.refund_taxable) as total_taxable,
+      SUM(sri.refund_cgst) as total_cgst,
+      SUM(sri.refund_sgst) as total_sgst,
+      SUM(sri.refund_igst) as total_igst,
+      SUM(sri.refund_total) as total_amount
+    FROM sales_return_items sri
+    JOIN sales_returns sr ON sri.sales_return_id = sr.id
+    LEFT JOIN products p ON sri.product_id = p.id
+    WHERE 1=1
+  `;
+  const params = [];
+  if (fromDate) {
+    query += ' AND sr.return_date >= ?';
+    params.push(fromDate);
+  }
+  if (toDate) {
+    query += ' AND sr.return_date <= ?';
+    params.push(toDate);
+  }
+  query += `
+    GROUP BY sri.item_name, sri.product_id, p.hsn_code, p.unit, p.tax_rate
+    ORDER BY total_amount DESC
+  `;
+
+  return db.prepare(query).all(...params).map(row => ({
+    ...row,
+    uqc: UQC_MAPPING[row.unit] || 'OTH-OTHERS',
+    total_tax: roundTo((row.total_cgst || 0) + (row.total_sgst || 0) + (row.total_igst || 0), 2)
+  }));
+}
+

@@ -91,7 +91,15 @@ describe('Reporting & ExcelJS Export Engine', () => {
     const expectedSheets = [
       'GSTR1 Report',
       'b2b,sez,de',
+      'b2cl',
       'b2cs',
+      'cdnr',
+      'cdnur',
+      'exp',
+      'at',
+      'atadj',
+      'exemp',
+      'hsn(b2b)',
       'hsn(b2c)',
       'docs',
       'itemWiseSale',
@@ -99,20 +107,31 @@ describe('Reporting & ExcelJS Export Engine', () => {
       'itemSummary'
     ];
 
+    expect(wb.worksheets.length).toBe(16);
+
     for (const sheetName of expectedSheets) {
       const sheet = wb.getWorksheet(sheetName);
       expect(sheet).toBeDefined();
       expect(sheet.rowCount).toBeGreaterThan(0);
     }
 
-    // Verify GSTR1 Report headers
+    // Verify GSTR1 Report headers and merges
     const wsMaster = wb.getWorksheet('GSTR1 Report');
     const r1 = wsMaster.getRow(1);
     expect(r1.getCell(1).value).toBe('From Year');
     expect(r1.getCell(3).value).toBe('To Year');
+
+    // Verify Row 10 and 11 headers
+    expect(wsMaster.getCell('A10').value).toBe('GSTIN/UIN No.');
+    expect(wsMaster.getCell('D10').value).toBe('Invoice');
+    expect(wsMaster.getCell('K10').value).toBe('Amount');
+    expect(wsMaster.getCell('D11').value).toBe('No.');
+    expect(wsMaster.getCell('E11').value).toBe('Date');
+    expect(wsMaster.getCell('F11').value).toBe('Value');
 
     // Verify docs sheet
     const wsDocs = wb.getWorksheet('docs');
     expect(wsDocs.getRow(1).getCell(1).value).toContain('Summary of documents');
   });
 });
+

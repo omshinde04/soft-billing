@@ -83,12 +83,14 @@ export default function InvoicePrintModal({ invoice, businessSettings, isOpen, o
             className="bg-white border border-slate-300 shadow-md p-8 w-full max-w-[800px] text-slate-800 text-xs leading-relaxed"
           >
             {/* Invoice Top Header */}
-            <div className="flex justify-between items-start border-b border-slate-300 pb-3 mb-4">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-3">
               <div>
-                <span className="font-bold tracking-wider text-sm uppercase text-slate-900">TAX INVOICE</span>
+                <span className="font-extrabold tracking-wider text-sm uppercase text-blue-600">
+                  TAX INVOICE
+                </span>
               </div>
               <div>
-                <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">
+                <span className="text-[10px] font-semibold text-slate-500 tracking-wider uppercase">
                   ORIGINAL FOR RECIPIENT
                 </span>
               </div>
@@ -97,132 +99,98 @@ export default function InvoicePrintModal({ invoice, businessSettings, isOpen, o
             {/* Seller Info */}
             <div className="mb-4">
               <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
-                {seller.legal_name || 'DISTRIBUTOR ENTERPRISES'}
+                {seller.legal_name || 'MAHALAXMI ENTERPRISES'}
               </h2>
               {seller.gstin && (
-                <p className="font-semibold text-slate-800 mt-0.5">GSTIN {seller.gstin}</p>
+                <p className="font-bold text-slate-800 text-[11px] mt-0.5">GSTIN {seller.gstin}</p>
               )}
-              <p className="text-slate-600 mt-0.5">{seller.address}</p>
-              <p className="text-slate-600">
+              {seller.address && <p className="text-slate-600 text-[11px] mt-0.5">{seller.address}</p>}
+              <p className="text-slate-600 text-[11px]">
                 {seller.city ? `${seller.city}, ` : ''}{seller.state || 'MAHARASHTRA'}, {seller.pincode}
               </p>
-              <p className="text-slate-600 mt-0.5">
+              <p className="text-slate-600 text-[11px] mt-0.5">
                 {seller.phone && <span>Mobile +91 {seller.phone} </span>}
                 {seller.email && <span>Email {seller.email}</span>}
               </p>
             </div>
 
-            {/* Meta Row (Invoice #, Date, Customer, Place of supply) */}
-            <div className="grid grid-cols-2 gap-4 py-3 border-y border-slate-200 mb-4 bg-slate-50/50 px-2 rounded">
+            {/* Meta Row (Horizontal 3-column) */}
+            <div className="grid grid-cols-3 gap-2 py-2 border-y border-slate-200 mb-3 text-[11px]">
               <div>
-                <p>
-                  <span className="font-bold text-slate-700">Invoice #: </span>
-                  <span className="font-semibold text-slate-900">{invoice.invoice_number}</span>
-                </p>
-                <div className="mt-2">
-                  <span className="font-bold text-slate-700">Customer Details:</span>
-                  <p className="font-semibold text-slate-900 mt-0.5">{retailer.shop_name || 'Cash Customer'}</p>
-                  {retailer.address && <p className="text-slate-600">{retailer.address}</p>}
-                  {retailer.city && <p className="text-slate-600">{retailer.city}</p>}
-                  {retailer.gstin && <p className="font-semibold text-slate-700">GSTIN: {retailer.gstin}</p>}
-                </div>
+                <span className="text-slate-600">Invoice #: </span>
+                <span className="font-bold text-slate-900 font-mono-numbers">{invoice.invoice_number}</span>
+              </div>
+              <div>
+                <span className="text-slate-600">Invoice Date: </span>
+                <span className="font-bold text-slate-900">{formatIndianDate(invoice.invoice_date)}</span>
               </div>
               <div className="text-right">
-                <p>
-                  <span className="font-bold text-slate-700">Invoice Date: </span>
-                  <span>{formatIndianDate(invoice.invoice_date)}</span>
-                </p>
-                <p className="mt-1">
-                  <span className="font-bold text-slate-700">Due Date: </span>
-                  <span>{formatIndianDate(invoice.due_date || invoice.invoice_date)}</span>
-                </p>
-                <div className="mt-2">
-                  <span className="font-bold text-slate-700">Place of Supply:</span>
-                  <p className="font-semibold text-slate-900 mt-0.5">
-                    {invoice.place_of_supply || '27-MAHARASHTRA'}
-                  </p>
-                </div>
+                <span className="text-slate-600">Due Date: </span>
+                <span className="font-bold text-slate-900">{formatIndianDate(invoice.due_date || invoice.invoice_date)}</span>
+              </div>
+            </div>
+
+            {/* Customer Details & Place of Supply */}
+            <div className="mb-4 text-[11px] space-y-0.5">
+              <p className="text-slate-500 text-[10px]">Customer Details:</p>
+              <p className="font-bold text-slate-900 text-xs">{retailer.shop_name || 'Cash Customer'}</p>
+              {retailer.address && <p className="text-slate-600">{retailer.address}, {retailer.city}</p>}
+              {retailer.gstin && <p className="font-semibold text-slate-700">GSTIN: {retailer.gstin}</p>}
+              <div className="pt-1">
+                <span className="text-slate-500 text-[10px]">Place of Supply: </span>
+                <span className="font-bold text-slate-900">{invoice.place_of_supply || '27-MAHARASHTRA'}</span>
               </div>
             </div>
 
             {/* Items Table */}
             <table className="w-full border-collapse mb-4 text-[11px]">
               <thead>
-                <tr className="border-b-2 border-slate-400 text-slate-700 font-bold bg-slate-100">
+                <tr className="border-t-2 border-b-2 border-blue-500 text-slate-800 font-bold bg-blue-50/40">
                   <th className="py-2 px-1 text-left w-8">#</th>
                   <th className="py-2 px-2 text-left">Item</th>
-                  <th className="py-2 px-2 text-right w-20">Rate / Item</th>
-                  <th className="py-2 px-2 text-right w-16">Qty</th>
-                  <th className="py-2 px-2 text-right w-20">Taxable Value</th>
+                  <th className="py-2 px-2 text-right w-24">Rate / Item</th>
+                  <th className="py-2 px-2 text-right w-20">Qty</th>
+                  <th className="py-2 px-2 text-right w-24">Taxable Value</th>
                   <th className="py-2 px-2 text-right w-24">Tax Amount</th>
-                  <th className="py-2 px-2 text-right w-20">Amount</th>
+                  <th className="py-2 px-2 text-right w-24">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-100">
                 {items.map((item, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/50">
                     <td className="py-1.5 px-1 text-slate-500">{idx + 1}</td>
                     <td className="py-1.5 px-2 font-medium text-slate-900">
                       {item.item_name}
                       {item.hsn_code && (
-                        <span className="text-[10px] text-slate-400 ml-1.5">[{item.hsn_code}]</span>
+                        <span className="text-[10px] text-slate-400 ml-1.5 font-mono-numbers">[{item.hsn_code}]</span>
                       )}
                     </td>
-                    <td className="py-1.5 px-2 text-right font-mono-numbers">{item.rate.toFixed(2)}</td>
-                    <td className="py-1.5 px-2 text-right font-mono-numbers whitespace-nowrap">
+                    <td className="py-1.5 px-2 text-right font-mono-numbers font-semibold text-slate-800">
+                      {Number(item.rate || 0).toFixed(2)}
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-mono-numbers whitespace-nowrap text-slate-700">
                       {item.quantity} {item.unit}
                     </td>
-                    <td className="py-1.5 px-2 text-right font-mono-numbers">
-                      {item.taxable_amount.toFixed(2)}
+                    <td className="py-1.5 px-2 text-right font-mono-numbers text-slate-700">
+                      {Number(item.taxable_amount || 0).toFixed(2)}
                     </td>
-                    <td className="py-1.5 px-2 text-right font-mono-numbers">
-                      {(item.cgst_amount + item.sgst_amount + item.igst_amount).toFixed(2)} ({item.tax_rate}%)
+                    <td className="py-1.5 px-2 text-right font-mono-numbers text-slate-700">
+                      {Number((item.cgst_amount || 0) + (item.sgst_amount || 0) + (item.igst_amount || 0)).toFixed(2)} ({item.tax_rate}%)
                     </td>
-                    <td className="py-1.5 px-2 text-right font-mono-numbers font-medium">
-                      {item.total_amount.toFixed(2)}
+                    <td className="py-1.5 px-2 text-right font-mono-numbers font-medium text-slate-900">
+                      {Number(item.total_amount || 0).toFixed(2)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            {/* Summary & Tax Breakdown Box */}
-            <div className="flex justify-between items-start pt-2 border-t border-slate-300">
-              <div className="w-1/2 pr-4">
-                <div className="text-[11px] space-y-1 mb-4">
-                  <p>
-                    <span className="font-semibold text-slate-700">Total Items / Qty: </span>
-                    <span className="font-mono-numbers">{items.length} / {totalQty}</span>
-                  </p>
-                  <p className="leading-snug">
-                    <span className="font-semibold text-slate-700">Total amount (in words): </span>
-                    <span className="italic">{numberToWordsINR(invoice.grand_total)}</span>
-                  </p>
-                </div>
-
-                {/* Bank Details */}
-                {seller.bank_name && (
-                  <div className="p-2.5 rounded bg-slate-50 border border-slate-200 text-[10px] leading-tight space-y-0.5">
-                    <p className="font-bold text-slate-800">Bank Details:</p>
-                    <p><span className="font-medium text-slate-600">Bank:</span> {seller.bank_name}</p>
-                    {seller.bank_account_no && (
-                      <p><span className="font-medium text-slate-600">Account #:</span> {seller.bank_account_no}</p>
-                    )}
-                    {seller.bank_ifsc && (
-                      <p><span className="font-medium text-slate-600">IFSC Code:</span> {seller.bank_ifsc}</p>
-                    )}
-                    {seller.bank_branch && (
-                      <p><span className="font-medium text-slate-600">Branch:</span> {seller.bank_branch}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Numerical Totals (Right Column) */}
-              <div className="w-1/2 pl-4 border-l border-slate-200 space-y-1.5 font-mono-numbers">
+            {/* Numerical Totals (Right-aligned) */}
+            <div className="flex justify-end mb-3">
+              <div className="w-64 space-y-1 font-mono-numbers text-xs">
                 <div className="flex justify-between py-0.5 text-slate-700">
                   <span className="font-medium">Taxable Amount</span>
-                  <span>{formatINR(invoice.subtotal_taxable)}</span>
+                  <span className="font-semibold">{formatINR(invoice.subtotal_taxable)}</span>
                 </div>
 
                 {invoice.is_inter_state ? (
@@ -233,11 +201,11 @@ export default function InvoicePrintModal({ invoice, businessSettings, isOpen, o
                 ) : (
                   <>
                     <div className="flex justify-between py-0.5 text-slate-700">
-                      <span>CGST</span>
+                      <span>CGST 2.5%</span>
                       <span>{formatINR(invoice.total_cgst)}</span>
                     </div>
                     <div className="flex justify-between py-0.5 text-slate-700">
-                      <span>SGST</span>
+                      <span>SGST 2.5%</span>
                       <span>{formatINR(invoice.total_sgst)}</span>
                     </div>
                   </>
@@ -250,32 +218,53 @@ export default function InvoicePrintModal({ invoice, businessSettings, isOpen, o
                   </div>
                 )}
 
-                <div className="flex justify-between py-1.5 border-y-2 border-slate-800 text-sm font-bold text-slate-900">
+                <div className="flex justify-between py-1.5 border-t border-slate-300 text-sm font-bold text-slate-900">
                   <span>Total</span>
-                  <span>{formatINR(invoice.grand_total)}</span>
-                </div>
-
-                <div className="flex justify-between pt-1 text-xs font-bold text-slate-900">
-                  <span>Amount Payable:</span>
                   <span>{formatINR(invoice.grand_total)}</span>
                 </div>
               </div>
             </div>
 
-            {/* Footer & Signature Section */}
-            <div className="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end">
-              <div className="text-[9px] text-slate-400">
-                <p>This is a computer generated document and requires no signature.</p>
-                {invoice.notes && <p className="mt-1 text-slate-500">Note: {invoice.notes}</p>}
+            {/* Summary Divider Bar (Matching Swipe reference) */}
+            <div className="py-2 border-y border-blue-400 bg-blue-50/20 text-[11px] flex justify-between items-center mb-3">
+              <div>
+                <span className="font-semibold text-slate-700">Total Items / Qty : </span>
+                <span className="font-mono-numbers font-bold text-slate-900">{items.length} / {totalQty}</span>
+              </div>
+              <div className="text-right">
+                <span className="font-semibold text-slate-700">Total amount (in words): </span>
+                <span className="italic font-medium text-slate-800">INR {numberToWordsINR(invoice.grand_total)}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end text-xs font-bold text-slate-900 mb-6">
+              <span className="mr-6">Amount Payable:</span>
+              <span className="font-mono-numbers text-sm">{formatINR(invoice.grand_total)}</span>
+            </div>
+
+            {/* Bank Details & Signature Section */}
+            <div className="flex justify-between items-end border-t border-slate-200 pt-4">
+              <div className="text-[10px] space-y-0.5 text-slate-700">
+                <p className="font-bold text-slate-900 mb-1">Bank Details:</p>
+                <p><span className="text-slate-500">Bank:</span> <span className="font-semibold">{seller.bank_name || 'HDFC Bank'}</span></p>
+                <p><span className="text-slate-500">Account #:</span> <span className="font-mono-numbers font-semibold">{seller.bank_account_no || '50200120068000'}</span></p>
+                <p><span className="text-slate-500">IFSC Code:</span> <span className="font-mono-numbers font-semibold">{seller.bank_ifsc || 'HDFC0002544'}</span></p>
+                <p><span className="text-slate-500">Branch:</span> <span className="font-semibold">{seller.bank_branch || 'GHOTI BUDRUK'}</span></p>
               </div>
 
               <div className="text-right">
                 <p className="text-[10px] font-semibold text-slate-700">
-                  For {seller.legal_name || 'DISTRIBUTOR ENTERPRISES'}
+                  For {seller.legal_name || 'MAHALAXMI ENTERPRISES'}
                 </p>
-                <div className="h-12"></div>
+                <div className="h-10"></div>
                 <p className="text-[10px] text-slate-500">Authorized Signatory</p>
               </div>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-6 pt-3 border-t border-slate-100 flex justify-between text-[9px] text-slate-400">
+              <span>Page 1 / 1 • This is a computer generated document and requires no signature.</span>
+              {invoice.notes && <span>Note: {invoice.notes}</span>}
             </div>
           </div>
         </div>
