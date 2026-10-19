@@ -130,7 +130,7 @@ export async function syncCatalogToCloud() {
         id: p.id,
         name: p.name,
         brand: p.brand || '',
-        category: p.category || 'General',
+        category: p.brand || p.category || 'General',
         sku: p.sku || '',
         selling_rate: p.selling_rate,
         mrp: p.mrp || p.selling_rate,

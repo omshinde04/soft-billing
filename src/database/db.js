@@ -82,12 +82,17 @@ function runMigrations(db) {
     `).run();
   }
 
-  // Ensure whatsapp_number exists on retailers table for existing databases
+  // Ensure whatsapp_number, beat_name, and outstanding_balance exist on retailers table
   try {
     const retailerCols = db.pragma('table_info(retailers)');
-    const hasWhatsapp = retailerCols.some(col => col.name === 'whatsapp_number');
-    if (!hasWhatsapp) {
+    if (!retailerCols.some(col => col.name === 'whatsapp_number')) {
       db.exec("ALTER TABLE retailers ADD COLUMN whatsapp_number TEXT DEFAULT ''");
+    }
+    if (!retailerCols.some(col => col.name === 'beat_name')) {
+      db.exec("ALTER TABLE retailers ADD COLUMN beat_name TEXT DEFAULT 'Market Beat'");
+    }
+    if (!retailerCols.some(col => col.name === 'outstanding_balance')) {
+      db.exec("ALTER TABLE retailers ADD COLUMN outstanding_balance REAL DEFAULT 0.0");
     }
   } catch (e) {
     // Column might already exist or table not yet created

@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS retailers (
   state_code TEXT NOT NULL DEFAULT '27',
   pincode TEXT DEFAULT '',
   gstin TEXT DEFAULT '',
+  beat_name TEXT DEFAULT 'Market Beat',
+  outstanding_balance REAL DEFAULT 0.0,
   notes TEXT DEFAULT '',
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

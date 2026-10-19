@@ -199,10 +199,10 @@ export function createRetailer(retailer) {
   const stmt = db.prepare(`
     INSERT INTO retailers (
       shop_name, contact_person, phone, whatsapp_number, address, city, state, state_code,
-      pincode, gstin, notes, is_active
+      pincode, gstin, beat_name, outstanding_balance, notes, is_active
     ) VALUES (
       @shop_name, @contact_person, @phone, @whatsapp_number, @address, @city, @state, @state_code,
-      @pincode, @gstin, @notes, @is_active
+      @pincode, @gstin, @beat_name, @outstanding_balance, @notes, @is_active
     )
   `);
 
@@ -217,6 +217,8 @@ export function createRetailer(retailer) {
     state_code: retailer.state_code || '27',
     pincode: retailer.pincode ? retailer.pincode.trim() : '',
     gstin: retailer.gstin ? retailer.gstin.trim().toUpperCase() : '',
+    beat_name: retailer.beat_name || 'Market Beat',
+    outstanding_balance: Number(retailer.outstanding_balance) || 0.0,
     notes: retailer.notes || '',
     is_active: retailer.is_active !== undefined ? (retailer.is_active ? 1 : 0) : 1
   });
@@ -238,6 +240,8 @@ export function updateRetailer(id, retailer) {
       state_code = @state_code,
       pincode = @pincode,
       gstin = @gstin,
+      beat_name = @beat_name,
+      outstanding_balance = @outstanding_balance,
       notes = @notes,
       is_active = @is_active,
       updated_at = CURRENT_TIMESTAMP
@@ -256,6 +260,8 @@ export function updateRetailer(id, retailer) {
     state_code: retailer.state_code || '27',
     pincode: retailer.pincode ? retailer.pincode.trim() : '',
     gstin: retailer.gstin ? retailer.gstin.trim().toUpperCase() : '',
+    beat_name: retailer.beat_name || 'Market Beat',
+    outstanding_balance: Number(retailer.outstanding_balance) || 0.0,
     notes: retailer.notes || '',
     is_active: retailer.is_active ? 1 : 0
   });
