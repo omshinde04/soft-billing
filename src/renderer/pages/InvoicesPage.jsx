@@ -9,16 +9,18 @@ import {
   Ban,
   RefreshCw,
   Plus,
-  FileSpreadsheet
+  MessageCircle
 } from 'lucide-react';
 import { formatINR, formatIndianDate } from '../../shared/calculations.js';
+import { generateInvoiceWhatsAppText, openWhatsAppShare } from '../../shared/whatsapp.js';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 
-export default function InvoicesPage({ onSelectInvoice, onNavigate, onShowToast }) {
+export default function InvoicesPage({ businessSettings, onSelectInvoice, onNavigate, onShowToast }) {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [datePreset, setDatePreset] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
@@ -26,6 +28,27 @@ export default function InvoicesPage({ onSelectInvoice, onNavigate, onShowToast 
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedInvoiceToCancel, setSelectedInvoiceToCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
+
+  const applyPreset = (preset) => {
+    setDatePreset(preset);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    if (preset === 'all') {
+      setFromDate('');
+      setToDate('');
+    } else if (preset === 'today') {
+      const todayStr = now.toISOString().split('T')[0];
+      setFromDate(todayStr);
+      setToDate(todayStr);
+    } else if (preset === 'this-month') {
+      const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+      setFromDate(startStr);
+      setToDate(endStr);
+    }
+  };
 
   const loadInvoices = async () => {
     setLoading(true);
@@ -70,6 +93,20 @@ export default function InvoicesPage({ onSelectInvoice, onNavigate, onShowToast 
     }
   };
 
+  const handleWhatsApp = async (inv) => {
+    try {
+      if (window.electronAPI) {
+        const fullInv = await window.electronAPI.getInvoiceById(inv.id);
+        const text = generateInvoiceWhatsAppText(fullInv, businessSettings || fullInv.seller);
+        const phone = fullInv.retailer?.whatsapp_number || fullInv.retailer?.phone || fullInv.retailer_phone || '';
+        openWhatsAppShare(phone, text);
+      }
+    } catch (err) {
+      console.error('WhatsApp error:', err);
+      onShowToast('Could not open WhatsApp', 'error');
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-8 space-y-6">
       {/* Top Filter & Action Bar */}
@@ -98,27 +135,56 @@ export default function InvoicesPage({ onSelectInvoice, onNavigate, onShowToast 
             <option value="cancelled">Cancelled</option>
           </select>
 
-          {/* Date Range */}
-          <div className="flex items-center gap-1.5 border border-slate-200 px-2 py-1.5 rounded-lg bg-slate-50 text-slate-600">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="bg-transparent focus:outline-none text-[11px]"
-            />
-            <span className="text-slate-400">to</span>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="bg-transparent focus:outline-none text-[11px]"
-            />
+          {/* Quick Presets */}
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs">
+            <button
+              onClick={() => applyPreset('all')}
+              className={`px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                datePreset === 'all' ? 'bg-white shadow-sm text-brand-700 font-bold' : 'text-slate-600'
+              }`}
+            >
+              All Time
+            </button>
+            <button
+              onClick={() => applyPreset('this-month')}
+              className={`px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                datePreset === 'this-month' ? 'bg-white shadow-sm text-brand-700 font-bold' : 'text-slate-600'
+              }`}
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => setDatePreset('custom')}
+              className={`px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                datePreset === 'custom' ? 'bg-white shadow-sm text-brand-700 font-bold' : 'text-slate-600'
+              }`}
+            >
+              Custom
+            </button>
           </div>
+
+          {datePreset === 'custom' && (
+            <div className="flex items-center gap-1.5 border border-slate-200 px-2 py-1.5 rounded-lg bg-slate-50 text-slate-600 font-mono-numbers text-[11px]">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="bg-transparent focus:outline-none"
+              />
+              <span className="text-slate-400">to</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="bg-transparent focus:outline-none"
+              />
+            </div>
+          )}
 
           <button
             onClick={() => onNavigate('new-invoice')}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-sm transition-all shadow-brand-600/20"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-sm transition-all shadow-brand-600/20 active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>Create Invoice</span>
@@ -198,6 +264,13 @@ export default function InvoicesPage({ onSelectInvoice, onNavigate, onShowToast 
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="inline-flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleWhatsApp(inv)}
+                          className="p-1.5 rounded hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
+                          title="Send Bill via WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4 text-emerald-600" />
+                        </button>
                         <button
                           onClick={() => onSelectInvoice(inv.id)}
                           className="p-1.5 rounded hover:bg-slate-100 text-slate-600 hover:text-brand-600 transition-colors"

@@ -260,4 +260,16 @@ export function registerIpcHandlers(mainWindow) {
     fs.writeFileSync(filePath, data);
     return { canceled: false, success: true, filePath };
   });
+
+  // ==========================================
+  // Open External Links (WhatsApp, etc.)
+  // ==========================================
+  ipcMain.handle('app:openExternal', async (_event, url) => {
+    const { shell } = await import('electron');
+    if (url && (url.startsWith('https://wa.me/') || url.startsWith('https://api.whatsapp.com/'))) {
+      await shell.openExternal(url);
+      return { success: true };
+    }
+    return { success: false };
+  });
 }

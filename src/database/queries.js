@@ -198,10 +198,10 @@ export function createRetailer(retailer) {
   const db = getDb();
   const stmt = db.prepare(`
     INSERT INTO retailers (
-      shop_name, contact_person, phone, address, city, state, state_code,
+      shop_name, contact_person, phone, whatsapp_number, address, city, state, state_code,
       pincode, gstin, notes, is_active
     ) VALUES (
-      @shop_name, @contact_person, @phone, @address, @city, @state, @state_code,
+      @shop_name, @contact_person, @phone, @whatsapp_number, @address, @city, @state, @state_code,
       @pincode, @gstin, @notes, @is_active
     )
   `);
@@ -210,6 +210,7 @@ export function createRetailer(retailer) {
     shop_name: retailer.shop_name.trim(),
     contact_person: retailer.contact_person ? retailer.contact_person.trim() : '',
     phone: retailer.phone ? retailer.phone.trim() : '',
+    whatsapp_number: retailer.whatsapp_number ? retailer.whatsapp_number.trim() : (retailer.phone ? retailer.phone.trim() : ''),
     address: retailer.address ? retailer.address.trim() : '',
     city: retailer.city ? retailer.city.trim() : '',
     state: retailer.state || 'Maharashtra',
@@ -230,6 +231,7 @@ export function updateRetailer(id, retailer) {
       shop_name = @shop_name,
       contact_person = @contact_person,
       phone = @phone,
+      whatsapp_number = @whatsapp_number,
       address = @address,
       city = @city,
       state = @state,
@@ -247,6 +249,7 @@ export function updateRetailer(id, retailer) {
     shop_name: retailer.shop_name.trim(),
     contact_person: retailer.contact_person ? retailer.contact_person.trim() : '',
     phone: retailer.phone ? retailer.phone.trim() : '',
+    whatsapp_number: retailer.whatsapp_number ? retailer.whatsapp_number.trim() : (retailer.phone ? retailer.phone.trim() : ''),
     address: retailer.address ? retailer.address.trim() : '',
     city: retailer.city ? retailer.city.trim() : '',
     state: retailer.state || 'Maharashtra',
@@ -639,7 +642,7 @@ export function createSalesReturn(returnData) {
 export function getSalesReturns({ fromDate = '', toDate = '', invoiceId = null } = {}) {
   const db = getDb();
   let query = `
-    SELECT sr.*, i.invoice_number, r.shop_name as retailer_name
+    SELECT sr.*, i.invoice_number, r.shop_name as retailer_name, r.phone, r.whatsapp_number, r.city as retailer_city
     FROM sales_returns sr
     JOIN invoices i ON sr.invoice_id = i.id
     LEFT JOIN retailers r ON sr.retailer_id = r.id
@@ -667,7 +670,9 @@ export function getSalesReturns({ fromDate = '', toDate = '', invoiceId = null }
 export function getSalesReturnById(id) {
   const db = getDb();
   const ret = db.prepare(`
-    SELECT sr.*, i.invoice_number, i.invoice_date, r.shop_name as retailer_name
+    SELECT sr.*, i.invoice_number, i.invoice_date,
+           r.shop_name as retailer_name, r.phone, r.whatsapp_number,
+           r.address as retailer_address, r.city as retailer_city, r.gstin as retailer_gstin
     FROM sales_returns sr
     JOIN invoices i ON sr.invoice_id = i.id
     LEFT JOIN retailers r ON sr.retailer_id = r.id
@@ -689,10 +694,28 @@ export function getSalesReturnById(id) {
 
 export function getDashboardMetrics({ fromDate = '', toDate = '' } = {}) {
   const db = getDb();
-  const dateFilter = (fromDate && toDate)
-    ? 'AND invoice_date BETWEEN ? AND ?'
-    : '';
-  const dateParams = (fromDate && toDate) ? [fromDate, toDate] : [];
+  
+  let invWhere = "status = 'finalized'";
+  const invParams = [];
+  if (fromDate) {
+    invWhere += ' AND invoice_date >= ?';
+    invParams.push(fromDate);
+  }
+  if (toDate) {
+    invWhere += ' AND invoice_date <= ?';
+    invParams.push(toDate);
+  }
+
+  let retWhere = '1=1';
+  const retParams = [];
+  if (fromDate) {
+    retWhere += ' AND return_date >= ?';
+    retParams.push(fromDate);
+  }
+  if (toDate) {
+    retWhere += ' AND return_date <= ?';
+    retParams.push(toDate);
+  }
 
   // Active Finalized Invoices Summary
   const invoiceStats = db.prepare(`
@@ -704,8 +727,8 @@ export function getDashboardMetrics({ fromDate = '', toDate = '' } = {}) {
       COALESCE(SUM(total_igst), 0) as total_igst,
       COALESCE(SUM(grand_total), 0) as total_sales
     FROM invoices
-    WHERE status = 'finalized' ${dateFilter}
-  `).get(...dateParams);
+    WHERE ${invWhere}
+  `).get(...invParams);
 
   // Sales Returns in the period
   const returnStats = db.prepare(`
@@ -714,20 +737,32 @@ export function getDashboardMetrics({ fromDate = '', toDate = '' } = {}) {
       COALESCE(SUM(total_refund_taxable), 0) as return_taxable,
       COALESCE(SUM(total_refund_amount), 0) as return_amount
     FROM sales_returns
-    WHERE 1=1 ${fromDate && toDate ? 'AND return_date BETWEEN ? AND ?' : ''}
-  `).get(...dateParams);
+    WHERE ${retWhere}
+  `).get(...retParams);
 
   const productCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE is_active = 1').get().count;
   const retailerCount = db.prepare('SELECT COUNT(*) as count FROM retailers WHERE is_active = 1').get().count;
 
-  // Recent 5 invoices
+  // Recent invoices
   const recentInvoices = db.prepare(`
     SELECT i.id, i.invoice_number, i.invoice_date, i.grand_total, i.status, r.shop_name as retailer_name
     FROM invoices i
     LEFT JOIN retailers r ON i.retailer_id = r.id
+    WHERE ${invWhere}
     ORDER BY i.id DESC
     LIMIT 6
-  `).all();
+  `).all(...invParams);
+
+  // Recent sales returns
+  const recentReturns = db.prepare(`
+    SELECT sr.id, sr.return_number, sr.return_date, sr.total_refund_amount, sr.reason, i.invoice_number, r.shop_name as retailer_name
+    FROM sales_returns sr
+    JOIN invoices i ON sr.invoice_id = i.id
+    LEFT JOIN retailers r ON sr.retailer_id = r.id
+    WHERE ${retWhere.replace(/return_date/g, 'sr.return_date')}
+    ORDER BY sr.id DESC
+    LIMIT 6
+  `).all(...retParams);
 
   const netSales = roundTo(invoiceStats.total_sales - returnStats.return_amount, 2);
   const netTaxable = roundTo(invoiceStats.total_taxable - returnStats.return_taxable, 2);
@@ -736,6 +771,7 @@ export function getDashboardMetrics({ fromDate = '', toDate = '' } = {}) {
   return {
     totalInvoices: invoiceStats.total_invoices,
     grossSales: roundTo(invoiceStats.total_sales, 2),
+    totalReturns: returnStats.total_returns,
     returnsAmount: roundTo(returnStats.return_amount, 2),
     netSales: netSales,
     taxableSales: netTaxable,
@@ -745,6 +781,7 @@ export function getDashboardMetrics({ fromDate = '', toDate = '' } = {}) {
     totalTax: totalTax,
     activeProducts: productCount,
     activeRetailers: retailerCount,
-    recentInvoices: recentInvoices
+    recentInvoices: recentInvoices,
+    recentReturns: recentReturns
   };
 }

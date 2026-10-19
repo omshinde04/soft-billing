@@ -82,6 +82,17 @@ function runMigrations(db) {
     `).run();
   }
 
+  // Ensure whatsapp_number exists on retailers table for existing databases
+  try {
+    const retailerCols = db.pragma('table_info(retailers)');
+    const hasWhatsapp = retailerCols.some(col => col.name === 'whatsapp_number');
+    if (!hasWhatsapp) {
+      db.exec("ALTER TABLE retailers ADD COLUMN whatsapp_number TEXT DEFAULT ''");
+    }
+  } catch (e) {
+    // Column might already exist or table not yet created
+  }
+
   // Record migration version 1
   const existingVersion = db.prepare('SELECT version FROM schema_migrations WHERE version = 1').get();
   if (!existingVersion) {

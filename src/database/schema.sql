@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS retailers (
   shop_name TEXT NOT NULL,
   contact_person TEXT DEFAULT '',
   phone TEXT DEFAULT '',
+  whatsapp_number TEXT DEFAULT '',
   address TEXT DEFAULT '',
   city TEXT DEFAULT '',
   state TEXT NOT NULL DEFAULT 'Maharashtra',

@@ -1,10 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Search, Plus, Calendar, AlertCircle, RefreshCw, X, CheckCircle2 } from 'lucide-react';
+import {
+  RotateCcw,
+  Search,
+  Plus,
+  Calendar,
+  AlertCircle,
+  RefreshCw,
+  X,
+  CheckCircle2,
+  Eye,
+  MessageCircle,
+  Printer
+} from 'lucide-react';
 import { formatINR, formatIndianDate, roundTo } from '../../shared/calculations.js';
+import { generateReturnWhatsAppText, openWhatsAppShare } from '../../shared/whatsapp.js';
 
-export default function SalesReturnsPage({ onShowToast }) {
+export default function SalesReturnsPage({ businessSettings, onSelectReturn, onShowToast }) {
   const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [datePreset, setDatePreset] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
@@ -17,6 +31,23 @@ export default function SalesReturnsPage({ onShowToast }) {
   const [returnDate, setReturnDate] = useState(new Date().toISOString().split('T')[0]);
   const [reason, setReason] = useState('Damaged goods / Expiry near');
   const [submitting, setSubmitting] = useState(false);
+
+  const applyPreset = (preset) => {
+    setDatePreset(preset);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    if (preset === 'all') {
+      setFromDate('');
+      setToDate('');
+    } else if (preset === 'this-month') {
+      const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+      setFromDate(startStr);
+      setToDate(endStr);
+    }
+  };
 
   const loadReturns = async () => {
     setLoading(true);
@@ -133,6 +164,11 @@ export default function SalesReturnsPage({ onShowToast }) {
       onShowToast(`Sales Return ${result.return_number} recorded successfully!`, 'success');
       setModalOpen(false);
       loadReturns();
+
+      // Open print/preview modal for the credit note
+      if (onSelectReturn) {
+        onSelectReturn(result.id);
+      }
     } catch (err) {
       console.error('Failed to create sales return:', err);
       onShowToast(err.message || 'Failed to create sales return', 'error');
@@ -141,31 +177,75 @@ export default function SalesReturnsPage({ onShowToast }) {
     }
   };
 
+  const handleWhatsAppReturn = async (ret) => {
+    try {
+      if (window.electronAPI) {
+        const fullRet = await window.electronAPI.getSalesReturnById(ret.id);
+        const text = generateReturnWhatsAppText(fullRet, businessSettings);
+        openWhatsAppShare(fullRet.retailer_phone || fullRet.phone, text);
+      }
+    } catch (err) {
+      console.error('WhatsApp share error:', err);
+      onShowToast('Could not share return via WhatsApp', 'error');
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-8 space-y-6">
-      {/* Top Controls */}
+      {/* Top Filter & Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-2 text-xs">
-          <Calendar className="w-4 h-4 text-slate-400" />
-          <span className="font-semibold text-slate-700">Filter Dates:</span>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-brand-500"
-          />
-          <span className="text-slate-400">to</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-brand-500"
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <Calendar className="w-4 h-4 text-brand-600" />
+          <span className="text-xs font-bold text-slate-700 mr-1">Filter:</span>
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs">
+            <button
+              onClick={() => applyPreset('all')}
+              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                datePreset === 'all' ? 'bg-white shadow-sm text-brand-700 font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Time
+            </button>
+            <button
+              onClick={() => applyPreset('this-month')}
+              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                datePreset === 'this-month' ? 'bg-white shadow-sm text-brand-700 font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => setDatePreset('custom')}
+              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                datePreset === 'custom' ? 'bg-white shadow-sm text-brand-700 font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Custom Dates
+            </button>
+          </div>
+
+          {datePreset === 'custom' && (
+            <div className="flex items-center gap-1.5 ml-2 text-xs">
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono-numbers text-[11px]"
+              />
+              <span className="text-slate-400">to</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono-numbers text-[11px]"
+              />
+            </div>
+          )}
         </div>
 
         <button
           onClick={handleOpenCreateModal}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all shadow-brand-600/20"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all shadow-brand-600/20 active:scale-95"
         >
           <Plus className="w-4 h-4" />
           <span>Record Sales Return</span>
@@ -199,6 +279,7 @@ export default function SalesReturnsPage({ onShowToast }) {
                 <th className="py-3 px-4 text-right">Refund Taxable</th>
                 <th className="py-3 px-4 text-right">Refund Tax</th>
                 <th className="py-3 px-4 text-right">Refund Total</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -227,6 +308,24 @@ export default function SalesReturnsPage({ onShowToast }) {
                   </td>
                   <td className="py-3 px-4 text-right font-bold text-rose-700 font-mono-numbers">
                     {formatINR(r.total_refund_amount)}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <div className="inline-flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleWhatsAppReturn(r)}
+                        className="p-1.5 rounded hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
+                        title="Send Credit Note on WhatsApp"
+                      >
+                        <MessageCircle className="w-4 h-4 text-emerald-600" />
+                      </button>
+                      <button
+                        onClick={() => onSelectReturn && onSelectReturn(r.id)}
+                        className="p-1.5 rounded hover:bg-slate-100 text-slate-600 hover:text-brand-600 transition-colors"
+                        title="View / Print Credit Note"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

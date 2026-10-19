@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar.jsx';
 import Header from './components/Header.jsx';
 import NotificationToast from './components/NotificationToast.jsx';
 import InvoicePrintModal from './components/InvoicePrintModal.jsx';
+import CreditNotePrintModal from './components/CreditNotePrintModal.jsx';
 
 import DashboardPage from './pages/DashboardPage.jsx';
 import InvoicesPage from './pages/InvoicesPage.jsx';
@@ -21,6 +22,10 @@ export default function App() {
   // Invoice Preview Modal State
   const [previewInvoice, setPreviewInvoice] = useState(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // Credit Note / Return Preview Modal State
+  const [previewReturn, setPreviewReturn] = useState(null);
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
 
   // Load Settings on initial mount
   useEffect(() => {
@@ -53,6 +58,21 @@ export default function App() {
     } catch (err) {
       console.error('Failed to load invoice for preview:', err);
       showToast('Could not load invoice details', 'error');
+    }
+  };
+
+  const handleOpenReturnPreview = async (returnId) => {
+    try {
+      if (window.electronAPI) {
+        const ret = await window.electronAPI.getSalesReturnById(returnId);
+        if (ret) {
+          setPreviewReturn(ret);
+          setIsReturnModalOpen(true);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load sales return for preview:', err);
+      showToast('Could not load credit note details', 'error');
     }
   };
 
@@ -95,6 +115,7 @@ export default function App() {
             <DashboardPage
               onNavigate={setActivePage}
               onSelectInvoice={handleOpenInvoicePreview}
+              onSelectReturn={handleOpenReturnPreview}
             />
           )}
 
@@ -123,7 +144,11 @@ export default function App() {
           )}
 
           {activePage === 'returns' && (
-            <SalesReturnsPage onShowToast={showToast} />
+            <SalesReturnsPage
+              businessSettings={businessSettings}
+              onSelectReturn={handleOpenReturnPreview}
+              onShowToast={showToast}
+            />
           )}
 
           {activePage === 'reports' && (
@@ -144,7 +169,16 @@ export default function App() {
       <InvoicePrintModal
         isOpen={isPrintModalOpen}
         invoice={previewInvoice}
+        businessSettings={businessSettings}
         onClose={() => setIsPrintModalOpen(false)}
+      />
+
+      {/* Printable Credit Note Modal */}
+      <CreditNotePrintModal
+        isOpen={isReturnModalOpen}
+        returnDoc={previewReturn}
+        businessSettings={businessSettings}
+        onClose={() => setIsReturnModalOpen(false)}
       />
 
       {/* Floating Notifications */}
@@ -155,3 +189,4 @@ export default function App() {
     </div>
   );
 }
+

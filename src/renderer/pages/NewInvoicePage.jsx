@@ -288,8 +288,18 @@ export default function NewInvoicePage({ businessSettings, onInvoiceCreated, onS
             <div className="mt-2 text-slate-500 space-y-0.5 text-[11px]">
               <p className="font-medium text-slate-800">{selectedRetailer.shop_name}</p>
               {selectedRetailer.address && <p>{selectedRetailer.address}, {selectedRetailer.city}</p>}
+              {(selectedRetailer.phone || selectedRetailer.whatsapp_number) && (
+                <p className="text-slate-600 font-mono-numbers">
+                  <span>Tel: {selectedRetailer.phone || '—'}</span>
+                  {selectedRetailer.whatsapp_number && (
+                    <span className="ml-2 text-emerald-700 font-semibold">
+                      • WA: {selectedRetailer.whatsapp_number}
+                    </span>
+                  )}
+                </p>
+              )}
               {selectedRetailer.gstin ? (
-                <p className="text-emerald-700 font-semibold">GSTIN: {selectedRetailer.gstin}</p>
+                <p className="text-emerald-700 font-semibold font-mono-numbers">GSTIN: {selectedRetailer.gstin}</p>
               ) : (
                 <p className="italic text-slate-400">Unregistered Consumer (B2C)</p>
               )}

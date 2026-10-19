@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Search, Plus, Edit2, CheckCircle2, XCircle, RefreshCw, X, AlertCircle } from 'lucide-react';
+import { Store, Search, Plus, Edit2, CheckCircle2, XCircle, RefreshCw, X, AlertCircle, MessageCircle } from 'lucide-react';
 import { INDIAN_STATES } from '../../shared/constants.js';
 import { validateGSTIN } from '../../shared/calculations.js';
+import { openWhatsAppShare } from '../../shared/whatsapp.js';
 
 export default function RetailersPage({ onShowToast }) {
   const [retailers, setRetailers] = useState([]);
@@ -16,6 +17,7 @@ export default function RetailersPage({ onShowToast }) {
     shop_name: '',
     contact_person: '',
     phone: '',
+    whatsapp_number: '',
     address: '',
     city: '',
     state: 'Maharashtra',
@@ -53,6 +55,7 @@ export default function RetailersPage({ onShowToast }) {
         shop_name: ret.shop_name,
         contact_person: ret.contact_person || '',
         phone: ret.phone || '',
+        whatsapp_number: ret.whatsapp_number || ret.phone || '',
         address: ret.address || '',
         city: ret.city || '',
         state: ret.state || 'Maharashtra',
@@ -69,6 +72,7 @@ export default function RetailersPage({ onShowToast }) {
         shop_name: '',
         contact_person: '',
         phone: '',
+        whatsapp_number: '',
         address: '',
         city: '',
         state: 'Maharashtra',
@@ -195,7 +199,7 @@ export default function RetailersPage({ onShowToast }) {
               <tr>
                 <th className="py-3 px-4">Shop Name</th>
                 <th className="py-3 px-4">Contact Person</th>
-                <th className="py-3 px-4">Phone</th>
+                <th className="py-3 px-4">Phone / WhatsApp</th>
                 <th className="py-3 px-4">City / Area</th>
                 <th className="py-3 px-4">GSTIN</th>
                 <th className="py-3 px-4 text-center">Status</th>
@@ -210,7 +214,23 @@ export default function RetailersPage({ onShowToast }) {
                     {r.address && <div className="text-[10px] text-slate-400 truncate max-w-xs">{r.address}</div>}
                   </td>
                   <td className="py-3 px-4 text-slate-700">{r.contact_person || '—'}</td>
-                  <td className="py-3 px-4 font-mono-numbers text-slate-700">{r.phone || '—'}</td>
+                  <td className="py-3 px-4 font-mono-numbers text-slate-700">
+                    <div className="flex items-center gap-1.5">
+                      <span>{r.phone || '—'}</span>
+                      {(r.whatsapp_number || r.phone) && (
+                        <button
+                          onClick={() => openWhatsAppShare(r.whatsapp_number || r.phone, `Hello ${r.shop_name}, greetings!`)}
+                          className="p-1 rounded hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
+                          title={`Chat with ${r.shop_name} on WhatsApp (${r.whatsapp_number || r.phone})`}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        </button>
+                      )}
+                    </div>
+                    {r.whatsapp_number && r.whatsapp_number !== r.phone && (
+                      <div className="text-[10px] text-emerald-700 font-medium">WA: {r.whatsapp_number}</div>
+                    )}
+                  </td>
                   <td className="py-3 px-4 text-slate-600">
                     {r.city ? `${r.city}, ${r.state}` : r.state}
                   </td>
@@ -304,14 +324,25 @@ export default function RetailersPage({ onShowToast }) {
                   />
                 </div>
 
-                <div className="col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Address / Landmark</label>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">WhatsApp Number</label>
+                    {formData.phone && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, whatsapp_number: prev.phone }))}
+                        className="text-[10px] text-emerald-600 hover:text-emerald-700 font-semibold"
+                      >
+                        Same as Mobile
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
-                    placeholder="Shop No., Market Yard, Street"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    placeholder="e.g. 9822334455"
+                    value={formData.whatsapp_number}
+                    onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono-numbers"
                   />
                 </div>
 
@@ -325,6 +356,18 @@ export default function RetailersPage({ onShowToast }) {
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </div>
+
+                <div className="col-span-2">
+                  <label className="block font-semibold text-slate-700 mb-1">Address / Landmark</label>
+                  <input
+                    type="text"
+                    placeholder="Shop No., Market Yard, Street"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
+
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">PIN Code</label>

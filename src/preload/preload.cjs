@@ -45,7 +45,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   backupDatabase: () => ipcRenderer.invoke('db:backup'),
   seedDemoData: () => ipcRenderer.invoke('db:seedDemo'),
 
-  // Print & PDF
+  // Print & PDF & WhatsApp
   printInvoice: () => ipcRenderer.invoke('print:trigger'),
-  saveInvoicePDF: (invoiceNumber) => ipcRenderer.invoke('print:savePDF', invoiceNumber)
+  saveInvoicePDF: (invoiceNumber) => ipcRenderer.invoke('print:savePDF', invoiceNumber),
+  openExternal: (url) => ipcRenderer.invoke('app:openExternal', url)
 });

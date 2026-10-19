@@ -1,13 +1,15 @@
 import React from 'react';
-import { X, Printer, Download, FileText } from 'lucide-react';
+import { X, Printer, Download, FileText, MessageCircle } from 'lucide-react';
 import { formatINR, formatIndianDate, numberToWordsINR } from '../../shared/calculations.js';
+import { generateInvoiceWhatsAppText, openWhatsAppShare } from '../../shared/whatsapp.js';
 
-export default function InvoicePrintModal({ invoice, isOpen, onClose }) {
+export default function InvoicePrintModal({ invoice, businessSettings, isOpen, onClose }) {
   if (!isOpen || !invoice) return null;
 
-  const seller = invoice.seller || {};
+  const seller = invoice.seller || businessSettings || {};
   const retailer = invoice.retailer || {};
   const items = invoice.items || [];
+  const retailerPhone = retailer.whatsapp_number || retailer.phone || invoice.retailer_phone || '';
 
   const totalQty = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
 
@@ -21,6 +23,11 @@ export default function InvoicePrintModal({ invoice, isOpen, onClose }) {
     } else {
       window.print();
     }
+  };
+
+  const handleWhatsApp = () => {
+    const text = generateInvoiceWhatsAppText(invoice, seller);
+    openWhatsAppShare(retailerPhone, text);
   };
 
   return (
@@ -37,7 +44,15 @@ export default function InvoicePrintModal({ invoice, isOpen, onClose }) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleWhatsApp}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors shadow-sm"
+              title="Send Bill to Retailer on WhatsApp"
+            >
+              <MessageCircle className="w-4 h-4 fill-white text-emerald-600" />
+              <span>Send WhatsApp</span>
+            </button>
             <button
               onClick={handleSavePDF}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium transition-colors"
@@ -54,7 +69,7 @@ export default function InvoicePrintModal({ invoice, isOpen, onClose }) {
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors ml-2"
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors ml-1"
             >
               <X className="w-5 h-5" />
             </button>
