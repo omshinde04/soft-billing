@@ -1,5 +1,7 @@
-import { ipcMain, dialog } from 'electron';
+import { ipcMain, dialog, app, shell, clipboard } from 'electron';
 import path from 'path';
+import fs from 'fs';
+import { execFile } from 'child_process';
 import {
   getBusinessSettings,
   updateBusinessSettings,
@@ -38,8 +40,15 @@ import {
 import { generateGSTR1Workbook } from '../services/excelExportService.js';
 import { backupDatabase } from '../database/db.js';
 import { seedDemoData } from '../services/sampleDataService.js';
+import { syncCatalogToCloud } from '../services/firebaseSyncService.js';
 
 export function registerIpcHandlers(mainWindow) {
+  // ==========================================
+  // Cloud & Mobile Sync
+  // ==========================================
+  ipcMain.handle('firebase:syncCatalog', async () => {
+    return syncCatalogToCloud();
+  });
   // ==========================================
   // Business Settings
   // ==========================================
@@ -279,17 +288,152 @@ export function registerIpcHandlers(mainWindow) {
       margins: { marginType: 'printableArea' }
     });
 
-    const fs = await import('fs');
     fs.writeFileSync(filePath, data);
     return { canceled: false, success: true, filePath };
+  });
+
+  // ==========================================
+  // Direct Production WhatsApp PDF Dispatcher
+  // ==========================================
+  ipcMain.handle('whatsapp:sendPDF', async (_event, payload = {}) => {
+    try {
+      const {
+        fileName = 'Invoice',
+        folderSubdir = 'Invoices',
+        phone = '',
+        messageText = '',
+        openChat = true,
+        chatTarget = 'universal'
+      } = payload;
+
+      if (!mainWindow) {
+        throw new Error('Application window is not ready');
+      }
+
+      // 1. Destination directory: ~/Documents/Billing-Soft/<folderSubdir>
+      const docsDir = app.getPath('documents');
+      const targetDir = path.join(docsDir, 'Billing-Soft', folderSubdir);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      const cleanBaseName = (fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`).replace(/[/\\?%*:|"<>]/g, '_');
+      const filePath = path.join(targetDir, cleanBaseName);
+
+      // 2. Render silent high-res PDF
+      const pdfData = await mainWindow.webContents.printToPDF({
+        printBackground: true,
+        pageSize: 'A4',
+        margins: { marginType: 'printableArea' }
+      });
+
+      fs.writeFileSync(filePath, pdfData);
+
+      // 3. Put PDF file on OS clipboard (so user can press Cmd+V / Ctrl+V in WhatsApp to attach directly)
+      if (process.platform === 'darwin') {
+        try {
+          await new Promise((resolve) => {
+            execFile('osascript', ['-e', `set the clipboard to (POSIX file "${filePath}")`], (err) => {
+              if (err) console.error('macOS AppleScript clipboard error:', err);
+              resolve();
+            });
+          });
+        } catch (clipErr) {
+          console.error('macOS clipboard file copy failed:', clipErr);
+        }
+      } else if (process.platform === 'win32') {
+        try {
+          await new Promise((resolve) => {
+            execFile('powershell', ['-NoProfile', '-Command', `Set-Clipboard -Path "${filePath}"`], (err) => {
+              if (err) console.error('Windows PowerShell clipboard error:', err);
+              resolve();
+            });
+          });
+        } catch (clipErr) {
+          console.error('Windows clipboard file copy failed:', clipErr);
+        }
+      }
+
+      // Also copy text path as fallback
+      clipboard.writeText(filePath);
+
+      // 4. Highlight PDF file in Finder / Explorer
+      try {
+        shell.showItemInFolder(filePath);
+      } catch (fErr) {
+        console.error('Failed to show item in folder:', fErr);
+      }
+
+      // 5. Open WhatsApp chat with pre-filled message
+      const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+      const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+      const encodedText = encodeURIComponent(messageText || `Attached PDF: ${cleanBaseName}`);
+
+      let whatsappUrl;
+      if (chatTarget === 'desktop') {
+        whatsappUrl = targetPhone
+          ? `whatsapp://send?phone=${targetPhone}&text=${encodedText}`
+          : `whatsapp://send?text=${encodedText}`;
+      } else if (chatTarget === 'web') {
+        whatsappUrl = targetPhone
+          ? `https://web.whatsapp.com/send?phone=${targetPhone}&text=${encodedText}`
+          : `https://web.whatsapp.com/send?text=${encodedText}`;
+      } else {
+        whatsappUrl = targetPhone
+          ? `https://wa.me/${targetPhone}?text=${encodedText}`
+          : `https://wa.me/?text=${encodedText}`;
+      }
+
+      if (openChat) {
+        try {
+          await shell.openExternal(whatsappUrl);
+        } catch (openErr) {
+          console.error('Failed to open WhatsApp URL:', openErr);
+          // Fallback to wa.me if desktop scheme fails
+          if (chatTarget === 'desktop') {
+            const fallbackUrl = targetPhone
+              ? `https://wa.me/${targetPhone}?text=${encodedText}`
+              : `https://wa.me/?text=${encodedText}`;
+            await shell.openExternal(fallbackUrl);
+            whatsappUrl = fallbackUrl;
+          }
+        }
+      }
+
+      return {
+        success: true,
+        filePath,
+        fileName: cleanBaseName,
+        phone: targetPhone,
+        whatsappUrl
+      };
+    } catch (error) {
+      console.error('whatsapp:sendPDF error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // ==========================================
+  // File & Shell Utilities
+  // ==========================================
+  ipcMain.handle('shell:showItemInFolder', async (_event, fullPath) => {
+    if (fullPath && fs.existsSync(fullPath)) {
+      shell.showItemInFolder(fullPath);
+      return { success: true };
+    }
+    return { success: false };
   });
 
   // ==========================================
   // Open External Links (WhatsApp, etc.)
   // ==========================================
   ipcMain.handle('app:openExternal', async (_event, url) => {
-    const { shell } = await import('electron');
-    if (url && (url.startsWith('https://wa.me/') || url.startsWith('https://api.whatsapp.com/'))) {
+    if (url && (
+      url.startsWith('https://wa.me/') ||
+      url.startsWith('https://api.whatsapp.com/') ||
+      url.startsWith('https://web.whatsapp.com/') ||
+      url.startsWith('whatsapp://')
+    )) {
       await shell.openExternal(url);
       return { success: true };
     }

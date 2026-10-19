@@ -27,6 +27,7 @@ export default function OrdersPage({ onSelectInvoice, onInvoiceCreated, onShowTo
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [convertingId, setConvertingId] = useState(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -43,6 +44,39 @@ export default function OrdersPage({ onSelectInvoice, onInvoiceCreated, onShowTo
       if (onShowToast) onShowToast('Failed to load orders', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Live real-time listener for incoming orders from mobile salesman
+  useEffect(() => {
+    let unsubscribe = null;
+    if (window.electronAPI?.onLiveOrderReceived) {
+      unsubscribe = window.electronAPI.onLiveOrderReceived(() => {
+        loadOrders();
+      });
+    }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  const handleSyncCatalog = async () => {
+    setIsSyncingCatalog(true);
+    try {
+      if (window.electronAPI?.syncCatalogToCloud) {
+        const res = await window.electronAPI.syncCatalogToCloud();
+        if (res.success) {
+          if (onShowToast) {
+            onShowToast(`☁️ Catalog pushed to mobile app! (${res.productsCount} products, ${res.retailersCount} retailers)`, 'success');
+          }
+        } else {
+          if (onShowToast) onShowToast(res.error || 'Sync failed', 'error');
+        }
+      }
+    } catch (e) {
+      if (onShowToast) onShowToast('Failed to sync catalog: ' + e.message, 'error');
+    } finally {
+      setIsSyncingCatalog(false);
     }
   };
 
@@ -186,6 +220,15 @@ export default function OrdersPage({ onSelectInvoice, onInvoiceCreated, onShowTo
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleSyncCatalog}
+            disabled={isSyncingCatalog}
+            className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            title="Push active products & retailers master from SQLite to salesman mobile app"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCatalog ? 'animate-spin' : ''}`} />
+            <span>{isSyncingCatalog ? 'Syncing Catalog...' : 'Sync Catalog to Mobile'}</span>
+          </button>
           <button
             onClick={handleSimulateMobileOrder}
             disabled={isSimulating}

@@ -228,8 +228,14 @@ export default function InvoicesPage({ businessSettings, onSelectInvoice, onNavi
                 const totalGst = inv.total_cgst + inv.total_sgst + inv.total_igst;
                 return (
                   <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-900 font-mono-numbers">
-                      {inv.invoice_number}
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => onSelectInvoice(inv.id)}
+                        className="font-bold text-brand-600 hover:text-brand-700 hover:underline font-mono-numbers text-left cursor-pointer"
+                        title="View & Print Invoice (Send PDF to WhatsApp)"
+                      >
+                        {inv.invoice_number}
+                      </button>
                     </td>
                     <td className="py-3 px-4 text-slate-600">
                       {formatIndianDate(inv.invoice_date)}

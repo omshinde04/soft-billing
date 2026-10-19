@@ -285,8 +285,14 @@ export default function SalesReturnsPage({ businessSettings, onSelectReturn, onS
             <tbody className="divide-y divide-slate-100">
               {returns.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="py-3 px-4 font-bold text-slate-900 font-mono-numbers">
-                    {r.return_number}
+                  <td className="py-3 px-4">
+                    <button
+                      onClick={() => onSelectReturn(r.id)}
+                      className="font-bold text-rose-700 hover:text-rose-800 hover:underline font-mono-numbers text-left cursor-pointer"
+                      title="View & Print Credit Note (Send PDF to WhatsApp)"
+                    >
+                      {r.return_number}
+                    </button>
                   </td>
                   <td className="py-3 px-4 text-slate-600">
                     {formatIndianDate(r.return_date)}

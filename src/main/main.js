@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDatabase, closeDatabase } from '../database/db.js';
 import { registerIpcHandlers } from './ipcHandlers.js';
+import { startFirebaseOrderListener, stopFirebaseOrderListener } from '../services/firebaseSyncService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,9 @@ function createWindow() {
 
   // Register IPC endpoints
   registerIpcHandlers(mainWindow);
+
+  // Start live listening for mobile salesman orders (transient cloud queue)
+  startFirebaseOrderListener(mainWindow);
 
   // Prevent navigation away from the app
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -85,6 +89,7 @@ if (!gotTheLock) {
   });
 
   app.on('window-all-closed', () => {
+    stopFirebaseOrderListener();
     closeDatabase();
     if (process.platform !== 'darwin') {
       app.quit();
@@ -92,6 +97,7 @@ if (!gotTheLock) {
   });
 
   app.on('before-quit', () => {
+    stopFirebaseOrderListener();
     closeDatabase();
   });
 }

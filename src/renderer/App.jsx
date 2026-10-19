@@ -49,6 +49,23 @@ export default function App() {
     loadSettings();
   }, [activePage]);
 
+  // Live listener for incoming orders from mobile salesman
+  useEffect(() => {
+    let unsubscribe = null;
+    if (window.electronAPI?.onLiveOrderReceived) {
+      unsubscribe = window.electronAPI.onLiveOrderReceived((order) => {
+        setPendingOrdersCount(prev => prev + 1);
+        showToast(
+          `⚡ Live Order #${order.order_number} received from ${order.salesman_name}! (₹${Number(order.grand_total || 0).toLocaleString('en-IN')})`,
+          'success'
+        );
+      });
+    }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
   };

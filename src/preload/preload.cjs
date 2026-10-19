@@ -36,6 +36,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getOrderById: (id) => ipcRenderer.invoke('orders:getById', id),
   createOrder: (orderData) => ipcRenderer.invoke('orders:create', orderData),
   convertOrderToInvoice: (orderId) => ipcRenderer.invoke('orders:convert', orderId),
+  syncCatalogToCloud: () => ipcRenderer.invoke('firebase:syncCatalog'),
+  onLiveOrderReceived: (callback) => {
+    const handler = (_event, order) => callback(order);
+    ipcRenderer.on('orders:liveReceived', handler);
+    return () => ipcRenderer.removeListener('orders:liveReceived', handler);
+  },
 
   // Dashboard & Reports
   getDashboardMetrics: (filter) => ipcRenderer.invoke('dashboard:getMetrics', filter),
@@ -54,5 +60,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Print & PDF & WhatsApp
   printInvoice: () => ipcRenderer.invoke('print:trigger'),
   saveInvoicePDF: (invoiceNumber) => ipcRenderer.invoke('print:savePDF', invoiceNumber),
+  sendPDFToWhatsApp: (payload) => ipcRenderer.invoke('whatsapp:sendPDF', payload),
+  showItemInFolder: (path) => ipcRenderer.invoke('shell:showItemInFolder', path),
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url)
 });

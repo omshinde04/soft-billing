@@ -18,7 +18,9 @@ import {
 } from '../src/database/queries.js';
 import {
   generateInvoiceWhatsAppText,
-  generateReturnWhatsAppText
+  generateInvoicePDFWhatsAppText,
+  generateReturnWhatsAppText,
+  generateReturnPDFWhatsAppText
 } from '../src/shared/whatsapp.js';
 
 const TEST_DB_PATH = path.resolve(process.cwd(), '.data/test_workflow.db');
@@ -124,6 +126,43 @@ describe('Core Workflow, Returns Dashboard & WhatsApp Integration', () => {
     expect(text).toContain('Against Invoice:* INV-1001');
     expect(text).toContain('Damaged cartons during transit');
     expect(text).toContain('TOTAL REFUND CREDIT: ₹171.40');
+  });
+
+  it('generates concise PDF companion WhatsApp texts for invoices and credit notes', () => {
+    const fakeInvoice = {
+      invoice_number: 'INV-1008',
+      invoice_date: '2026-10-19',
+      grand_total: 981,
+      retailer: { shop_name: 'ABC Kirana' }
+    };
+    const settings = {
+      legal_name: 'Om Distributor Services',
+      bank_name: 'State Bank of India',
+      bank_account_no: '1234567890',
+      bank_ifsc: 'SBIN0001234'
+    };
+
+    const invPdfText = generateInvoicePDFWhatsAppText(fakeInvoice, settings);
+    expect(invPdfText).toContain('TAX INVOICE — OM DISTRIBUTOR SERVICES');
+    expect(invPdfText).toContain('Bill No:* INV-1008');
+    expect(invPdfText).toContain('Customer:* ABC Kirana');
+    expect(invPdfText).toContain('Total Amount:* ₹981.00');
+    expect(invPdfText).toContain('Tax Invoice Document:* INV-1008.pdf');
+    expect(invPdfText).toContain('State Bank of India');
+
+    const fakeReturn = {
+      return_number: 'RET-1005',
+      return_date: '2026-10-19',
+      invoice_number: 'INV-1008',
+      retailer_name: 'ABC Kirana',
+      total_refund_amount: 120
+    };
+    const retPdfText = generateReturnPDFWhatsAppText(fakeReturn, settings);
+    expect(retPdfText).toContain('CREDIT NOTE / SALES RETURN — OM DISTRIBUTOR SERVICES');
+    expect(retPdfText).toContain('Credit Note No:* RET-1005');
+    expect(retPdfText).toContain('Against Invoice:* INV-1008');
+    expect(retPdfText).toContain('Total Refund Credit:* ₹120.00');
+    expect(retPdfText).toContain('Credit Note Document:* RET-1005.pdf');
   });
 
   it('calculates dashboard metrics with independent date filters and sales return adjustments', () => {

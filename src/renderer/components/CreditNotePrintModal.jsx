@@ -41,29 +41,32 @@ export default function CreditNotePrintModal({ returnDoc, businessSettings, isOp
           <div className="flex items-center gap-2.5">
             <button
               onClick={handleWhatsApp}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
               title="Send Credit Note on WhatsApp"
             >
               <MessageCircle className="w-4 h-4 fill-white text-emerald-600" />
-              <span>WhatsApp</span>
+              <span>Send WhatsApp</span>
             </button>
             <button
               onClick={handleSavePDF}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium transition-colors cursor-pointer"
+              title="Save Credit Note as PDF"
             >
               <Download className="w-4 h-4 text-slate-300" />
               <span>Save PDF</span>
             </button>
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-xs font-medium text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-xs font-medium text-white transition-colors cursor-pointer"
+              title="Print Credit Note"
             >
               <Printer className="w-4 h-4" />
               <span>Print</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors ml-1"
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors ml-1 cursor-pointer"
+              title="Close Preview"
             >
               <X className="w-5 h-5" />
             </button>
