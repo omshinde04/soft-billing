@@ -121,16 +121,19 @@ describe('Reporting & ExcelJS Export Engine', () => {
     expect(r1.getCell(1).value).toBe('From Year');
     expect(r1.getCell(3).value).toBe('To Year');
 
-    // Verify Row 10 clean single-row headers (no duplicate stacked names)
+    // Verify Row 10 and Row 11 merged headers
     expect(wsMaster.getCell('A10').value).toBe('GSTIN/UIN No.');
-    expect(wsMaster.getCell('B10').value).toBe('Party Name');
-    expect(wsMaster.getCell('C10').value).toBe('Transaction Type');
-    expect(wsMaster.getCell('D10').value).toBe('Invoice No.');
-    expect(wsMaster.getCell('E10').value).toBe('Invoice Date');
-    expect(wsMaster.getCell('F10').value).toBe('Invoice Value');
-    expect(wsMaster.getCell('K10').value).toBe('Integrated Tax');
-    expect(wsMaster.getCell('L10').value).toBe('Central Tax');
-    expect(wsMaster.getCell('M10').value).toBe('State/UT Tax');
+    expect(wsMaster.getCell('D10').value).toBe('Invoice');
+    expect(wsMaster.getCell('K10').value).toBe('Amount');
+    expect(wsMaster.getCell('D11').value).toBe('No.');
+    expect(wsMaster.getCell('E11').value).toBe('Date');
+    expect(wsMaster.getCell('F11').value).toBe('Value');
+    expect(wsMaster.getCell('K11').value).toBe('Integrated Tax');
+    expect(wsMaster.getCell('L11').value).toBe('Central Tax');
+    expect(wsMaster.getCell('M11').value).toBe('State/UT Tax');
+    expect(wsMaster.model.merges).toContain('A10:A11');
+    expect(wsMaster.model.merges).toContain('D10:F10');
+    expect(wsMaster.model.merges).toContain('K10:N10');
 
     // Verify docs sheet
     const wsDocs = wb.getWorksheet('docs');

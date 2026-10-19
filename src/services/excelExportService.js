@@ -65,30 +65,65 @@ export async function generateGSTR1Workbook({ fromDate = '', toDate = '', filePa
   wsMaster.addRow(['   (b)Aggregate Turnover - April to June, 2017:', '']);
   wsMaster.addRow([]);
 
-  // Row 10: Clean Table Headers (Single-row to eliminate duplicate stacked titles in Apple Numbers/Excel)
-  const headerRow = wsMaster.addRow([
+  // Row 10: Parent Headers
+  wsMaster.addRow([
     'GSTIN/UIN No.',
     'Party Name',
     'Transaction Type',
-    'Invoice No.',
-    'Invoice Date',
-    'Invoice Value',
+    'Invoice', '', '',
     'Rate',
     'CESS Rate',
     'Taxable Value',
     'Reverse Charge',
+    'Amount', '', '', '',
+    'Place Of Supply'
+  ]);
+
+  // Row 11: Child Headers (explicitly empty string for merged parent columns so no duplicates ever show)
+  wsMaster.addRow([
+    '', '', '',
+    'No.',
+    'Date',
+    'Value',
+    '', '', '', '',
     'Integrated Tax',
     'Central Tax',
     'State/UT Tax',
     'CESS',
-    'Place Of Supply'
+    ''
   ]);
 
-  headerRow.font = boldFont;
-  headerRow.alignment = centerAlign;
-  headerRow.eachCell(cell => {
-    cell.fill = headerFill;
-  });
+  // Merge headers matching Swipe reference
+  wsMaster.mergeCells('A10:A11');
+  wsMaster.mergeCells('B10:B11');
+  wsMaster.mergeCells('C10:C11');
+  wsMaster.mergeCells('D10:F10');
+  wsMaster.mergeCells('G10:G11');
+  wsMaster.mergeCells('H10:H11');
+  wsMaster.mergeCells('I10:I11');
+  wsMaster.mergeCells('J10:J11');
+  wsMaster.mergeCells('K10:N10');
+  wsMaster.mergeCells('O10:O11');
+
+  // Format all header cells in Rows 10 and 11
+  const thinBorder = {
+    top: { style: 'thin', color: { argb: 'FFD0D7DE' } },
+    left: { style: 'thin', color: { argb: 'FFD0D7DE' } },
+    bottom: { style: 'thin', color: { argb: 'FFD0D7DE' } },
+    right: { style: 'thin', color: { argb: 'FFD0D7DE' } }
+  };
+
+  for (let r = 10; r <= 11; r++) {
+    const row = wsMaster.getRow(r);
+    row.height = 24;
+    for (let c = 1; c <= 15; c++) {
+      const cell = row.getCell(c);
+      cell.font = boldFont;
+      cell.alignment = centerAlign;
+      cell.fill = headerFill;
+      cell.border = thinBorder;
+    }
+  }
 
   // Explicit column widths for clean readability
   wsMaster.getColumn(1).width = 18;  // GSTIN/UIN No.
