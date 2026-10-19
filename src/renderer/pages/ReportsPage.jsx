@@ -250,6 +250,29 @@ export default function ReportsPage({ onShowToast }) {
                       </tr>
                     ))}
                   </tbody>
+                  {invoiceReport.rows.length > 0 && (
+                    <tfoot className="bg-amber-50 border-t-2 border-b-2 border-amber-300 font-bold font-mono-numbers text-slate-900">
+                      <tr>
+                        <td colSpan={4} className="py-2.5 px-3 text-right font-sans font-bold uppercase tracking-wider text-amber-950">
+                          Totals ({invoiceReport.summary.activeCount || 0} Active Invoices):
+                        </td>
+                        <td className="py-2.5 px-3 text-right">{formatINR(invoiceReport.summary.totalTaxable || 0, false)}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          {formatINR(invoiceReport.rows.reduce((s, r) => s + (r.status !== 'cancelled' ? r.total_cgst : 0), 0), false)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          {formatINR(invoiceReport.rows.reduce((s, r) => s + (r.status !== 'cancelled' ? r.total_sgst : 0), 0), false)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          {formatINR(invoiceReport.rows.reduce((s, r) => s + (r.status !== 'cancelled' ? r.total_igst : 0), 0), false)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-amber-950 bg-amber-100">
+                          {formatINR(invoiceReport.summary.totalAmount || 0, false)}
+                        </td>
+                        <td className="py-2.5 px-3"></td>
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             )}

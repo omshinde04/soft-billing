@@ -294,6 +294,36 @@ export default function InvoicesPage({ businessSettings, onSelectInvoice, onNavi
                 );
               })}
             </tbody>
+            {invoices.length > 0 && (
+              <tfoot className="bg-amber-50 border-t-2 border-b-2 border-amber-300 font-bold font-mono-numbers text-slate-900">
+                <tr>
+                  <td colSpan={3} className="py-3 px-4 text-right font-sans font-bold uppercase tracking-wider text-amber-950">
+                    Page Totals ({invoices.filter((i) => i.status !== 'cancelled').length} Active):
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    {formatINR(
+                      invoices.reduce((s, i) => s + (i.status !== 'cancelled' ? i.subtotal_taxable : 0), 0),
+                      false
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    {formatINR(
+                      invoices.reduce(
+                        (s, i) => s + (i.status !== 'cancelled' ? i.total_cgst + i.total_sgst + i.total_igst : 0),
+                        0
+                      ),
+                      false
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-right font-bold text-amber-950 bg-amber-100">
+                    {formatINR(
+                      invoices.reduce((s, i) => s + (i.status !== 'cancelled' ? i.grand_total : 0), 0)
+                    )}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         )}
       </div>

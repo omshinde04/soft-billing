@@ -155,7 +155,7 @@ export async function generateGSTR1Workbook({ fromDate = '', toDate = '', filePa
       ? roundTo(((inv.total_cgst + inv.total_sgst + inv.total_igst) / inv.subtotal_taxable) * 100, 1)
       : 5.0;
 
-    wsMaster.addRow([
+    const dataRow = wsMaster.addRow([
       inv.retailer_gstin || '',
       inv.retailer_name || 'Cash Customer',
       'Sale',
@@ -173,6 +173,23 @@ export async function generateGSTR1Workbook({ fromDate = '', toDate = '', filePa
       inv.retailer_gstin ? (inv.place_of_supply || '27-Maharashtra') : ''
     ]);
 
+    dataRow.height = 20;
+    for (let c = 1; c <= 15; c++) {
+      const cell = dataRow.getCell(c);
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+      };
+      if (typeof cell.value === 'number') {
+        cell.numFmt = '#,##0.00';
+        cell.alignment = { vertical: 'middle', horizontal: 'right' };
+      } else {
+        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : 'center' };
+      }
+    }
+
     totalVal = roundTo(totalVal + inv.grand_total, 2);
     totalTaxable = roundTo(totalTaxable + inv.subtotal_taxable, 2);
     totalIgst = roundTo(totalIgst + inv.total_igst, 2);
@@ -180,16 +197,46 @@ export async function generateGSTR1Workbook({ fromDate = '', toDate = '', filePa
     totalSgst = roundTo(totalSgst + inv.total_sgst, 2);
   }
 
-  // Master Sheet Totals Row
+  // Master Sheet Totals Row (Always Prominently Highlighted)
   const totRow = wsMaster.addRow([
     'Totals', '', '', '', '',
-    totalVal, '', '', totalTaxable, '',
-    totalIgst, totalCgst, totalSgst, 0.0, ''
+    roundTo(totalVal, 2), '', '', roundTo(totalTaxable, 2), '',
+    roundTo(totalIgst, 2), roundTo(totalCgst, 2), roundTo(totalSgst, 2), 0.0, ''
   ]);
   const totRowNum = totRow.number;
   wsMaster.mergeCells(`A${totRowNum}:E${totRowNum}`);
-  totRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
-  totRow.font = { bold: true };
+
+  const totFill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFFEF08A' } // Vibrant warm yellow highlight for Grand Total
+  };
+  const totBorder = {
+    top: { style: 'thin', color: { argb: 'FF334155' } },
+    bottom: { style: 'double', color: { argb: 'FF0F172A' } },
+    left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+    right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+  };
+  const totFont = {
+    name: 'Calibri',
+    size: 11,
+    bold: true,
+    color: { argb: 'FF0F172A' }
+  };
+
+  totRow.height = 25;
+  for (let c = 1; c <= 15; c++) {
+    const cell = totRow.getCell(c);
+    cell.font = totFont;
+    cell.fill = totFill;
+    cell.border = totBorder;
+    if (typeof cell.value === 'number') {
+      cell.numFmt = '#,##0.00';
+      cell.alignment = { vertical: 'middle', horizontal: 'right' };
+    } else {
+      cell.alignment = { vertical: 'middle', horizontal: c === 1 ? 'right' : 'center' };
+    }
+  }
 
   // ==========================================
   // SHEET 2: b2b,sez,de (Registered B2B Supplies)
