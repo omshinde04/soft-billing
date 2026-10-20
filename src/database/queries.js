@@ -1015,3 +1015,87 @@ export function convertOrderToInvoice(orderId) {
     return { success: true, invoice, orderId };
   })();
 }
+
+// ==========================================
+// 8. SALESMEN MASTER (RBAC & CREDENTIALS)
+// ==========================================
+
+export function getSalesmen({ search = '', activeOnly = false } = {}) {
+  const db = getDb();
+  let query = 'SELECT * FROM salesmen WHERE 1=1';
+  const params = [];
+
+  if (activeOnly) {
+    query += ' AND is_active = 1';
+  }
+
+  if (search && search.trim()) {
+    query += ' AND (name LIKE ? OR phone LIKE ? OR login_id LIKE ? OR assigned_beat LIKE ?)';
+    const term = `%${search.trim()}%`;
+    params.push(term, term, term, term);
+  }
+
+  query += ' ORDER BY name ASC';
+  return db.prepare(query).all(...params);
+}
+
+export function getSalesmanById(id) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM salesmen WHERE id = ?').get(id);
+}
+
+export function createSalesman(salesman) {
+  const db = getDb();
+  const stmt = db.prepare(`
+    INSERT INTO salesmen (name, phone, login_id, password, assigned_beat, is_active)
+    VALUES (@name, @phone, @login_id, @password, @assigned_beat, @is_active)
+  `);
+
+  const info = stmt.run({
+    name: salesman.name.trim(),
+    phone: salesman.phone ? salesman.phone.trim() : '',
+    login_id: salesman.login_id ? salesman.login_id.trim().toLowerCase() : (salesman.phone ? salesman.phone.trim() : ''),
+    password: salesman.password ? String(salesman.password).trim() : '1234',
+    assigned_beat: salesman.assigned_beat ? salesman.assigned_beat.trim() : 'Nandgaon Main Market',
+    is_active: salesman.is_active !== undefined ? (salesman.is_active ? 1 : 0) : 1
+  });
+
+  return getSalesmanById(info.lastInsertRowid);
+}
+
+export function updateSalesman(id, salesman) {
+  const db = getDb();
+  const stmt = db.prepare(`
+    UPDATE salesmen SET
+      name = @name,
+      phone = @phone,
+      login_id = @login_id,
+      password = @password,
+      assigned_beat = @assigned_beat,
+      is_active = @is_active,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = @id
+  `);
+
+  stmt.run({
+    id: id,
+    name: salesman.name.trim(),
+    phone: salesman.phone ? salesman.phone.trim() : '',
+    login_id: salesman.login_id ? salesman.login_id.trim().toLowerCase() : (salesman.phone ? salesman.phone.trim() : ''),
+    password: salesman.password ? String(salesman.password).trim() : '1234',
+    assigned_beat: salesman.assigned_beat ? salesman.assigned_beat.trim() : 'Nandgaon Main Market',
+    is_active: salesman.is_active ? 1 : 0
+  });
+
+  return getSalesmanById(id);
+}
+
+export function toggleSalesmanStatus(id) {
+  const db = getDb();
+  const salesman = getSalesmanById(id);
+  if (!salesman) throw new Error('Salesman not found');
+  const newStatus = salesman.is_active ? 0 : 1;
+  db.prepare('UPDATE salesmen SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newStatus, id);
+  return getSalesmanById(id);
+}
+

@@ -110,6 +110,42 @@ function runMigrations(db) {
     // Orders table might already exist
   }
 
+  // Ensure salesmen table exists and seed defaults if empty
+  try {
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='salesmen'").get();
+    if (!tableExists) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS salesmen (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          phone TEXT NOT NULL UNIQUE,
+          login_id TEXT UNIQUE,
+          password TEXT NOT NULL DEFAULT '1234',
+          assigned_beat TEXT DEFAULT 'Nandgaon Main Market',
+          is_active INTEGER NOT NULL DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_salesmen_phone ON salesmen(phone);
+        CREATE INDEX IF NOT EXISTS idx_salesmen_login ON salesmen(login_id);
+        CREATE INDEX IF NOT EXISTS idx_salesmen_active ON salesmen(is_active);
+      `);
+    }
+
+    const count = db.prepare('SELECT COUNT(*) as count FROM salesmen').get().count;
+    if (count === 0) {
+      const insert = db.prepare(`
+        INSERT INTO salesmen (name, phone, login_id, password, assigned_beat, is_active)
+        VALUES (@name, @phone, @login_id, @password, @assigned_beat, 1)
+      `);
+      insert.run({ name: 'Rahul Shinde', phone: '9822012345', login_id: 'rahul', password: '123', assigned_beat: 'Nandgaon Main Market' });
+      insert.run({ name: 'Sanjay Patil', phone: '9822054321', login_id: 'sanjay', password: '123', assigned_beat: 'Station Road Beat' });
+      insert.run({ name: 'Amit Deshmukh', phone: '9822098765', login_id: 'amit', password: '123', assigned_beat: 'Old Agra Road Beat' });
+    }
+  } catch (e) {
+    console.error('Salesmen migration error:', e);
+  }
+
   // Record migration version 1
   const existingVersion = db.prepare('SELECT version FROM schema_migrations WHERE version = 1').get();
   if (!existingVersion) {

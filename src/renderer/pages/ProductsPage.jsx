@@ -83,6 +83,26 @@ export default function ProductsPage({ onShowToast }) {
     setModalOpen(true);
   };
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncToMobile = async () => {
+    setIsSyncing(true);
+    try {
+      if (window.electronAPI?.syncCatalogToCloud) {
+        const res = await window.electronAPI.syncCatalogToCloud();
+        if (res.success) {
+          onShowToast(`☁️ Pushed ${res.productsCount} products to Mobile App!`, 'success');
+        } else {
+          onShowToast(res.error || 'Sync failed', 'error');
+        }
+      }
+    } catch (e) {
+      console.error('Sync error:', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -100,6 +120,10 @@ export default function ProductsPage({ onShowToast }) {
       }
       setModalOpen(false);
       loadProducts();
+      // Auto-push updated catalog to mobile app in background
+      if (window.electronAPI?.syncCatalogToCloud) {
+        window.electronAPI.syncCatalogToCloud().catch(console.error);
+      }
     } catch (err) {
       console.error('Error saving product:', err);
       onShowToast(err.message || 'Error saving product', 'error');
@@ -111,6 +135,9 @@ export default function ProductsPage({ onShowToast }) {
       await window.electronAPI.toggleProductStatus(id);
       loadProducts();
       onShowToast('Product status updated', 'success');
+      if (window.electronAPI?.syncCatalogToCloud) {
+        window.electronAPI.syncCatalogToCloud().catch(console.error);
+      }
     } catch (err) {
       onShowToast('Failed to update status', 'error');
     }
@@ -141,6 +168,16 @@ export default function ProductsPage({ onShowToast }) {
             />
             <span>Active only</span>
           </label>
+
+          <button
+            onClick={handleSyncToMobile}
+            disabled={isSyncing}
+            className="flex items-center gap-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-lg shadow-sm transition-all disabled:opacity-50"
+            title="Push updated product rates and GST to mobile field app"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'Syncing...' : 'Sync to Mobile ⚡'}</span>
+          </button>
 
           <button
             onClick={() => handleOpenModal()}

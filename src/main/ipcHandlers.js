@@ -27,7 +27,12 @@ import {
   getOrders,
   getOrderById,
   createOrder,
-  convertOrderToInvoice
+  convertOrderToInvoice,
+  getSalesmen,
+  getSalesmanById,
+  createSalesman,
+  updateSalesman,
+  toggleSalesmanStatus
 } from '../database/queries.js';
 import {
   getInvoiceWiseReport,
@@ -117,6 +122,35 @@ export function registerIpcHandlers(mainWindow) {
   ipcMain.handle('retailers:toggleStatus', async (_event, id) => {
     if (!id) throw new Error('Retailer ID required');
     return toggleRetailerStatus(id);
+  });
+
+  // ==========================================
+  // Salesmen Master (Field Sales & RBAC)
+  // ==========================================
+  ipcMain.handle('salesmen:get', async (_event, filter = {}) => {
+    return getSalesmen(filter);
+  });
+
+  ipcMain.handle('salesmen:getById', async (_event, id) => {
+    if (!id) throw new Error('Salesman ID required');
+    return getSalesmanById(id);
+  });
+
+  ipcMain.handle('salesmen:create', async (_event, salesman) => {
+    if (!salesman || !salesman.name || !salesman.name.trim()) {
+      throw new Error('Salesman name is required');
+    }
+    return createSalesman(salesman);
+  });
+
+  ipcMain.handle('salesmen:update', async (_event, { id, salesman }) => {
+    if (!id || !salesman) throw new Error('Salesman ID and data required');
+    return updateSalesman(id, salesman);
+  });
+
+  ipcMain.handle('salesmen:toggleStatus', async (_event, id) => {
+    if (!id) throw new Error('Salesman ID required');
+    return toggleSalesmanStatus(id);
   });
 
   // ==========================================

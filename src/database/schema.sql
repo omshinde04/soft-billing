@@ -214,3 +214,21 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
 
+-- 11. Salesmen Master Table (RBAC for Mobile Field Sales)
+CREATE TABLE IF NOT EXISTS salesmen (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL UNIQUE,
+  login_id TEXT UNIQUE,
+  password TEXT NOT NULL DEFAULT '1234',
+  assigned_beat TEXT DEFAULT 'Nandgaon Main Market',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_salesmen_phone ON salesmen(phone);
+CREATE INDEX IF NOT EXISTS idx_salesmen_login ON salesmen(login_id);
+CREATE INDEX IF NOT EXISTS idx_salesmen_active ON salesmen(is_active);
+
+

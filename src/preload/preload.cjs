@@ -19,6 +19,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateRetailer: (id, retailer) => ipcRenderer.invoke('retailers:update', { id, retailer }),
   toggleRetailerStatus: (id) => ipcRenderer.invoke('retailers:toggleStatus', id),
 
+  // Salesmen (Field RBAC)
+  getSalesmen: (filter) => ipcRenderer.invoke('salesmen:get', filter),
+  getSalesmanById: (id) => ipcRenderer.invoke('salesmen:getById', id),
+  createSalesman: (salesman) => ipcRenderer.invoke('salesmen:create', salesman),
+  updateSalesman: (id, salesman) => ipcRenderer.invoke('salesmen:update', { id, salesman }),
+  toggleSalesmanStatus: (id) => ipcRenderer.invoke('salesmen:toggleStatus', id),
+
   // Invoices
   getInvoices: (filter) => ipcRenderer.invoke('invoices:get', filter),
   getInvoiceById: (id) => ipcRenderer.invoke('invoices:getById', id),

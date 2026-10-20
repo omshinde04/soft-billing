@@ -11,7 +11,8 @@ import {
 import {
   createOrder,
   getProducts,
-  getRetailers
+  getRetailers,
+  getSalesmen
 } from '../database/queries.js';
 
 export const firebaseConfig = {
@@ -158,10 +159,26 @@ export async function syncCatalogToCloud() {
       updated_at: new Date().toISOString()
     });
 
+    // Write salesmen RBAC credentials & beat assignments
+    const salesmen = getSalesmen({ activeOnly: true });
+    const salesmenDoc = doc(db, 'catalog', 'salesmen');
+    await setDoc(salesmenDoc, {
+      items: salesmen.map(s => ({
+        id: s.id,
+        name: s.name,
+        phone: s.phone,
+        login_id: s.login_id,
+        password: s.password,
+        assigned_beat: s.assigned_beat || 'Nandgaon Main Market'
+      })),
+      updated_at: new Date().toISOString()
+    });
+
     return {
       success: true,
       productsCount: products.length,
-      retailersCount: retailers.length
+      retailersCount: retailers.length,
+      salesmenCount: salesmen.length
     };
   } catch (error) {
     console.error('[FirebaseSync] Catalog sync error:', error);

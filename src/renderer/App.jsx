@@ -11,6 +11,7 @@ import InvoicesPage from './pages/InvoicesPage.jsx';
 import NewInvoicePage from './pages/NewInvoicePage.jsx';
 import ProductsPage from './pages/ProductsPage.jsx';
 import RetailersPage from './pages/RetailersPage.jsx';
+import SalesmenPage from './pages/SalesmenPage.jsx';
 import SalesReturnsPage from './pages/SalesReturnsPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
@@ -113,6 +114,7 @@ export default function App() {
     invoices: 'Invoice Records & History',
     products: 'Products Master',
     retailers: 'Retailers Master',
+    salesmen: 'Salesmen Master & Mobile RBAC',
     returns: 'Sales Returns',
     reports: 'Reports & GSTR-1',
     settings: 'Settings'
@@ -175,6 +177,10 @@ export default function App() {
 
           {activePage === 'retailers' && (
             <RetailersPage onShowToast={showToast} />
+          )}
+
+          {activePage === 'salesmen' && (
+            <SalesmenPage onShowToast={showToast} />
           )}
 
           {activePage === 'returns' && (
