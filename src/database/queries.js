@@ -896,15 +896,48 @@ export function createOrder(orderData) {
       });
     }
 
+    // Check if this order is a revision of an earlier order
+    let replacesOrderNumber = orderData.replaces_order_number || null;
+    if (!replacesOrderNumber && orderData.notes) {
+      const match = orderData.notes.match(/#(ORD-[0-9A-Za-z_-]+)/i);
+      if (match) {
+        replacesOrderNumber = match[1];
+      }
+    }
+
+    if (replacesOrderNumber) {
+      try {
+        const oldOrder = db.prepare('SELECT id, order_number, status, notes FROM orders WHERE order_number = ?').get(replacesOrderNumber);
+        if (oldOrder) {
+          if (oldOrder.status === 'pending') {
+            db.prepare(`
+              UPDATE orders
+              SET status = 'cancelled',
+                  notes = '[REPLACED BY ' || ? || '] ' || COALESCE(notes, '')
+              WHERE id = ?
+            `).run(orderNumber, oldOrder.id);
+          } else {
+            db.prepare(`
+              UPDATE orders
+              SET notes = '[SUPERSEDED BY ' || ? || ' (was ' || status || ')] ' || COALESCE(notes, '')
+              WHERE id = ?
+            `).run(orderNumber, oldOrder.id);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not cancel superseded order:', err);
+      }
+    }
+
     const insertOrderStmt = db.prepare(`
       INSERT INTO orders (
         order_number, order_date, salesman_name, salesman_phone, beat_name,
         retailer_id, retailer_name, retailer_phone, retailer_address, retailer_gstin,
-        subtotal_taxable, total_tax, grand_total, status, notes
+        subtotal_taxable, total_tax, grand_total, status, replaces_order_number, notes
       ) VALUES (
         @order_number, @order_date, @salesman_name, @salesman_phone, @beat_name,
         @retailer_id, @retailer_name, @retailer_phone, @retailer_address, @retailer_gstin,
-        @subtotal_taxable, @total_tax, @grand_total, @status, @notes
+        @subtotal_taxable, @total_tax, @grand_total, @status, @replaces_order_number, @notes
       )
     `);
 
@@ -923,6 +956,7 @@ export function createOrder(orderData) {
       total_tax: totalTax,
       grand_total: grandTotal,
       status: orderData.status || 'pending',
+      replaces_order_number: replacesOrderNumber || '',
       notes: orderData.notes || ''
     });
 

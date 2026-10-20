@@ -98,13 +98,18 @@ function runMigrations(db) {
     // Column might already exist or table not yet created
   }
 
-  // Ensure orders table exists for existing databases
+  // Ensure orders table exists and has replaces_order_number column
   try {
     const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'").get();
     if (!tableExists) {
       const schemaPath = path.join(__dirname, 'schema.sql');
       const schemaSql = fs.readFileSync(schemaPath, 'utf8');
       db.exec(schemaSql);
+    } else {
+      const orderCols = db.pragma('table_info(orders)');
+      if (orderCols && !orderCols.some(col => col.name === 'replaces_order_number')) {
+        db.exec("ALTER TABLE orders ADD COLUMN replaces_order_number TEXT DEFAULT ''");
+      }
     }
   } catch (e) {
     // Orders table might already exist

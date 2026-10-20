@@ -197,6 +197,7 @@ export default function OrdersPage({ onSelectInvoice, onInvoiceCreated, onShowTo
 
   const pendingOrders = orders.filter(o => o.status === 'pending');
   const convertedOrders = orders.filter(o => o.status === 'converted');
+  const cancelledOrders = orders.filter(o => o.status === 'cancelled');
   const pendingTotalValue = pendingOrders.reduce((sum, o) => sum + (o.grand_total || 0), 0);
 
   return (
@@ -347,6 +348,17 @@ export default function OrdersPage({ onSelectInvoice, onInvoiceCreated, onShowTo
             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
             Converted ({convertedOrders.length})
           </button>
+          <button
+            onClick={() => setStatusFilter('cancelled')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+              statusFilter === 'cancelled'
+                ? 'bg-rose-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+            Replaced / Cancelled ({cancelledOrders.length})
+          </button>
         </div>
 
         {/* Search */}
@@ -401,21 +413,42 @@ export default function OrdersPage({ onSelectInvoice, onInvoiceCreated, onShowTo
               <tbody className="divide-y divide-slate-100">
                 {orders.map((ord) => {
                   const isPending = ord.status === 'pending';
+                  const isCancelled = ord.status === 'cancelled';
                   const isConverting = convertingId === ord.id;
+                  const revisedFrom = ord.replaces_order_number || (ord.notes && ord.notes.match(/#(ORD-[0-9A-Za-z_-]+)/)?.[1]);
 
                   return (
-                    <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr
+                      key={ord.id}
+                      className={`hover:bg-slate-50/70 transition-colors ${
+                        isCancelled ? 'bg-slate-50/40 opacity-75' : ''
+                      }`}
+                    >
                       {/* Order Number */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="p-1.5 bg-sky-50 text-sky-700 rounded-md" title="From Android Sales App">
+                          <span
+                            className={`p-1.5 rounded-md ${
+                              isCancelled ? 'bg-slate-100 text-slate-400' : 'bg-sky-50 text-sky-700'
+                            }`}
+                            title="From Android Sales App"
+                          >
                             <Smartphone className="w-3.5 h-3.5" />
                           </span>
                           <div>
-                            <span className="font-bold text-slate-900 font-mono-numbers">
+                            <span
+                              className={`font-bold font-mono-numbers ${
+                                isCancelled ? 'text-slate-500 line-through' : 'text-slate-900'
+                              }`}
+                            >
                               {ord.order_number}
                             </span>
                             <div className="text-[10px] text-slate-400">Field App</div>
+                            {revisedFrom && (
+                              <div className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                                ✏️ Revised #{revisedFrom}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -458,7 +491,12 @@ export default function OrdersPage({ onSelectInvoice, onInvoiceCreated, onShowTo
 
                       {/* Status */}
                       <td className="py-3 px-4 text-center">
-                        {isPending ? (
+                        {isCancelled ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
+                            <XCircle className="w-3 h-3 text-slate-400" />
+                            <span>Replaced / Cancelled</span>
+                          </span>
+                        ) : isPending ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                             <Clock className="w-3 h-3 text-amber-600" />
                             <span>Pending Billing</span>
@@ -482,7 +520,9 @@ export default function OrdersPage({ onSelectInvoice, onInvoiceCreated, onShowTo
                             <Eye className="w-4 h-4" />
                           </button>
 
-                          {isPending ? (
+                          {isCancelled ? (
+                            <span className="text-[11px] text-slate-400 italic px-2">Superseded</span>
+                          ) : isPending ? (
                             <button
                               onClick={() => handleConvertOrder(ord.id)}
                               disabled={isConverting}
@@ -536,10 +576,16 @@ export default function OrdersPage({ onSelectInvoice, onInvoiceCreated, onShowTo
                 className={`px-3 py-1 rounded-full text-xs font-bold ${
                   selectedOrder.status === 'pending'
                     ? 'bg-amber-100 text-amber-800'
+                    : selectedOrder.status === 'cancelled'
+                    ? 'bg-rose-100 text-rose-800'
                     : 'bg-emerald-100 text-emerald-800'
                 }`}
               >
-                {selectedOrder.status === 'pending' ? 'Pending Conversion' : `Converted (${selectedOrder.converted_invoice_number})`}
+                {selectedOrder.status === 'pending'
+                  ? 'Pending Conversion'
+                  : selectedOrder.status === 'cancelled'
+                  ? 'Replaced / Superseded'
+                  : `Converted (${selectedOrder.converted_invoice_number})`}
               </span>
             </div>
 

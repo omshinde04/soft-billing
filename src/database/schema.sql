@@ -183,6 +183,7 @@ CREATE TABLE IF NOT EXISTS orders (
   total_tax REAL NOT NULL DEFAULT 0.0,
   grand_total REAL NOT NULL DEFAULT 0.0,
   status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'converted', 'cancelled'
+  replaces_order_number TEXT DEFAULT '',
   converted_invoice_id INTEGER REFERENCES invoices(id),
   converted_invoice_number TEXT DEFAULT '',
   notes TEXT DEFAULT '',

@@ -60,9 +60,10 @@ export function startFirebaseOrderListener(mainWindow) {
             console.log(`[FirebaseSync] Incoming order detected: ${rawData.order_number || docId}`);
 
             try {
-              // 1. Save order into local SQLite database
+              // 1. Save order into local SQLite database (auto-cancelling replaced order if revision)
               const savedOrder = createOrder({
                 order_number: rawData.order_number,
+                replaces_order_number: rawData.replaces_order_number || null,
                 order_date: rawData.order_date || new Date().toISOString().slice(0, 10),
                 salesman_name: rawData.salesman_name || 'Field Salesman',
                 salesman_phone: rawData.salesman_phone || '',
